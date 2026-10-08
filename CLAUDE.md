@@ -93,8 +93,8 @@ app/
     llm.py             (planned) client for the vLLM endpoint (intent + reply)
     prompts.py         (planned) all LLM prompt text
     postcode.py        (exists) reverse, lookup, segments, postcode regex/normalise
-  templates/           (planned) reply strings per language: en.json, yo.json, ha.json, ig.json
-  store.py             (planned) sessions (Modal Dict), interaction log (Volume, JSONL)
+  templates/           (exists) reply strings per language: en.json, yo.json, ha.json, ig.json
+  store.py             (exists) user hashing, sessions (Modal Dict), interaction log (Volume, JSONL)
 data/
   states.json          (exists) state codes -> names, documented codes only (11 so far)
   fact_sheet_<lang>.md (planned) facts the LLM may use for explain_postcode
@@ -105,6 +105,8 @@ tests/                 unit tests only: no network, run by `pytest -q`
   test_postcode.py     (exists) API client tests with recorded responses
   fixtures/postcode/   (exists) API response bodies; see its README for which are live
   test_orchestrator.py (planned) state machine tests with fake services
+  test_templates.py    (exists) same keys/placeholders in all languages, attribution verbatim
+  test_store.py        (exists) hashing, sessions, log schema and privacy
 evals/                 live-model checks (need GPU/network), never collected by pytest
   natlas_final_test.py (exists) intent + grounded-reply evals (laptop or Modal)
   test_natlas_asr.py   (exists) ASR access check + transcription
@@ -146,7 +148,8 @@ python evals/test_natlas_asr.py check
 python evals/test_natlas_asr.py yo sample.wav
 
 # unit tests and lint (no network)
-pytest -q
+pytest -q                        # default run excludes pilot gates
+pytest -m pilot                  # release gate before real users (template review done)
 ruff check . && ruff format .
 
 # app (once written)
@@ -219,7 +222,10 @@ knew_postcode_before(bool|null)`. No coordinates, raw session IDs or audio.
 ## Definition of done for any change
 
 - `pytest -q` passes, and `ruff check .` is clean.
-- Templates exist for all four languages (mark untranslated strings `TODO_REVIEW`).
+- Templates exist for all four languages. Strings not yet checked by a native speaker are listed by key
+  in that file's `_todo_review` array (the string itself stays displayable); remove the key once reviewed.
+  `pytest -m pilot` (not in the default run) fails until every `_todo_review` list is empty; it must pass
+  before real users.
 - No new runtime dependency on a non-N-ATLAS model or an unapproved external service.
 - This file is updated if commands, layout or rules changed; SPEC.md if versions, contracts or budgets changed.
 
@@ -242,3 +248,6 @@ account is locked. The Twilio echo prototype is kept in `archive/twillo_echo.py`
   -> null), to avoid biasing the answer. Reverse geocode tries 50 m, then 250 m once. `states.json` has
   the 11 codes named in the official API docs. Live API responses (3 Oct) replace the reconstructed test
   fixtures. Superseded root scripts `natlas_{llm,text,local}_test.py` deleted.
+- 2026-10-08: Templates for en/yo/ha/ig (en final; yo/ha/ig drafts, all translated keys in `_todo_review`).
+  `app/store.py`: user hashing, sessions, JSONL log with one file per container per day.
+- 2026-10-08: `pytest -m pilot` gate for template review; Definition of done uses the `_todo_review` list.

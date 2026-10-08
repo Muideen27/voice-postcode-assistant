@@ -6,7 +6,10 @@ requires-python = ">=3.11"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
-addopts = "-q"
+addopts = "-q -m 'not pilot'"
+markers = [
+    "pilot: release gates for the real-user pilot (run with `pytest -m pilot`)",
+]
 
 [tool.ruff]
 line-length = 110

@@ -233,7 +233,10 @@ call level 1, so it signals a config bug); `429` → wait and retry once after 2
 
 ### 3.8 Interaction log
 
-One JSONL line per user turn in a Modal Volume at `/logs/interactions-YYYY-MM-DD.jsonl`:
+One JSONL line per user turn in a Modal Volume at `/logs/interactions-YYYY-MM-DD-<container>.jsonl`
+(date in WAT; one file per container so two containers never append to the same file; the Volume is
+committed after each row). `app/store.py` `LogRow` enforces the field list and rejects any `user_hash`
+that is not a sha256 hex digest:
 
 ```json
 {"ts":"2026-10-10T14:52:03+01:00","user_hash":"7f3a…","channel":"web","lang":"yo","input":"voice",
@@ -246,7 +249,12 @@ One JSONL line per user turn in a Modal Volume at `/logs/interactions-YYYY-MM-DD
 is shown** (asking after a result would bias it). It is skippable (→ null) and is set only on the row of
 the turn that answers it (null elsewhere).
 
-`scripts/export_log.py` → `docs/validation_log.csv` plus a summary table (counts per language, input,
+Sessions live in a `modal.Dict` keyed by `user_hash`, stored as plain dicts:
+`{lang, consented, knew_before_asked, awaiting: "knew_before"|"feedback"|null, turns}`. No postcode,
+coordinates or text are kept in the session.
+
+`scripts/export_log.py` must glob `interactions-*.jsonl` across all days and containers, merge the rows,
+sort them by `ts`, and drop duplicates on `(ts, user_hash)`. Output: `docs/validation_log.csv` plus a summary table (counts per language, input,
 intent, completion rate, median latency, helpful %, % who did not know their postcode) for the validation PDF.
 
 ---
@@ -262,7 +270,8 @@ intent, completion rate, median latency, helpful %, % who did not know their pos
 - [ ] Cold GPU: the page shows progress and gets a reply (or a retry message) within 180 s.
 - [ ] Log rows contain no coordinates, raw session IDs or audio.
 - [ ] Attribution visible on welcome screen and footer.
-- [ ] Every template string reviewed by a native speaker (no `TODO_REVIEW` left in yo/ha/ig).
+- [ ] Every template string reviewed by a native speaker (`_todo_review` empty in yo/ha/ig).
+- [ ] `pytest -m pilot` passes (all `_todo_review` lists empty).
 
 ---
 
@@ -290,3 +299,7 @@ The Twilio echo prototype is kept in `archive/twillo_echo.py`.
   `reverse()` tries 50 m then 250 m once. `states.json` = 11 codes from the official API docs. Postcode API
   shapes verified from live responses (3 Oct 2026); error envelope and `auth_required` /
   `level_not_granted` mapping documented.
+- 2026-10-08: Log file per container per day (`interactions-YYYY-MM-DD-<container>.jsonl`), Volume commit
+  per row; session fields defined; review marker is the `_todo_review` key list in each template file.
+- 2026-10-08: `export_log.py` merge/sort/dedupe contract. Pilot gate: `pytest -m pilot` (excluded from
+  the default run) fails while any `_todo_review` list is non-empty.
