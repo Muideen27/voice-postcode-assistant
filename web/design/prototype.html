@@ -1,0 +1,420 @@
+<title>Voice Postcode Assistant</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Layout: a working phone prototype beside a live "behind the scenes" trace; tabs switch to the pilot dashboard and the flow map. */
+:root{
+  --ground:#eef2ec; --panel:#ffffff; --ink:#15231b; --muted:#56655b; --line:#d3dccf;
+  --accent:#0d7a4c; --accent-soft:#dcefe3; --accent-ink:#ffffff;
+  --code:#f6c453; --code-ink:#2a1f00; --warn:#9a5b00; --warn-soft:#fbefd9; --bad:#a3322a;
+  --font-display:"Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --font-body:"Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  --font-mono:"JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --ground:#0f1712; --panel:#17221b; --ink:#e6eee8; --muted:#9db0a3; --line:#2b3a30;
+  --accent:#3fbf83; --accent-soft:#1d3a2a; --accent-ink:#06150d;
+  --code:#f2c14e; --code-ink:#221800; --warn:#f0b257; --warn-soft:#3a2c14; --bad:#f08a80; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --ground:#0f1712; --panel:#17221b; --ink:#e6eee8; --muted:#9db0a3; --line:#2b3a30;
+  --accent:#3fbf83; --accent-soft:#1d3a2a; --accent-ink:#06150d;
+  --code:#f2c14e; --code-ink:#221800; --warn:#f0b257; --warn-soft:#3a2c14; --bad:#f08a80; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--ground);color:var(--ink);font-family:var(--font-body);font-size:16px;line-height:1.55;padding:0 16px}
+.wrap{max-width:1080px;margin:0 auto;padding-block:28px 48px;display:flex;flex-direction:column;gap:22px}
+header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px}
+h1{font-family:var(--font-display);font-weight:700;font-size:clamp(1.7rem,4vw,2.4rem);line-height:1.1;margin:0;text-wrap:balance}
+.sub{color:var(--muted);margin:6px 0 0;max-width:60ch}
+.fmt{font-family:var(--font-mono);font-size:.82rem;color:var(--muted);letter-spacing:.04em}
+nav{display:flex;gap:4px;background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:4px;flex-wrap:wrap}
+nav button{font:inherit;font-size:.92rem;border:0;background:transparent;color:var(--ink);padding:8px 16px;border-radius:999px;cursor:pointer}
+nav button[aria-selected="true"]{background:var(--accent);color:var(--accent-ink);font-weight:700}
+button:focus-visible{outline:3px solid var(--code);outline-offset:2px}
+.view{display:none}.view.on{display:block}
+
+/* prototype */
+.proto{display:grid;grid-template-columns:minmax(0,370px) minmax(0,1fr);gap:28px;align-items:start}
+@media (max-width:820px){.proto{grid-template-columns:minmax(0,1fr)}}
+.phone{background:var(--ink);border-radius:38px;padding:12px;max-width:370px;width:100%;margin:0 auto}
+.screen{background:var(--panel);border-radius:28px;min-height:610px;padding:22px 18px 16px;display:flex;flex-direction:column;gap:14px;position:relative;overflow:hidden}
+.bar{display:flex;justify-content:space-between;align-items:center;font-size:.8rem;color:var(--muted)}
+.bar b{font-family:var(--font-display);color:var(--ink);font-size:1rem}
+.link{font:inherit;font-size:.82rem;background:none;border:0;color:var(--accent);cursor:pointer;padding:4px}
+.s-title{font-family:var(--font-display);font-weight:700;font-size:1.45rem;line-height:1.15;margin:4px 0 0;text-wrap:balance}
+.s-text{color:var(--muted);font-size:.95rem;margin:0}
+.big{font:inherit;width:100%;min-height:56px;border-radius:16px;border:1.5px solid var(--line);background:var(--panel);color:var(--ink);font-size:1.08rem;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:12px;padding:12px 16px;text-align:left}
+.big:hover{border-color:var(--accent)}
+.big.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);min-height:110px;flex-direction:column;justify-content:center;text-align:center;gap:6px}
+.big.voice{min-height:110px;flex-direction:column;justify-content:center;text-align:center;gap:6px}
+.big small{font-weight:400;font-size:.85rem;opacity:.9}
+.ico{width:30px;height:30px;flex:none}
+.stack{display:flex;flex-direction:column;gap:10px}
+.foot{margin-top:auto;text-align:center;font-size:.72rem;color:var(--muted)}
+.code{background:var(--code);color:var(--code-ink);border-radius:14px;padding:14px 12px;text-align:center}
+.code .lbl{font-size:.82rem;margin:0}
+.code .val{font-family:var(--font-mono);font-weight:700;font-size:1.5rem;letter-spacing:.06em;margin:2px 0 0;word-break:break-word}
+.chip{display:inline-block;font-size:.75rem;font-weight:700;padding:3px 10px;border-radius:999px;background:var(--accent-soft);color:var(--accent)}
+.chip.warn{background:var(--warn-soft);color:var(--warn)}
+.segs{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:.92rem;border-top:1px solid var(--line);padding-top:10px}
+.segs dt{font-family:var(--font-mono);font-weight:700}
+.segs dd{margin:0;color:var(--muted)}
+.row{display:flex;gap:8px}
+.small{font:inherit;flex:1;min-height:44px;border-radius:12px;border:1.5px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer;font-weight:700}
+.small:hover{border-color:var(--accent)}
+.heard{font-size:.85rem;color:var(--muted);background:var(--ground);border-radius:12px;padding:8px 10px}
+.answer{font-size:1.02rem}
+.pulse{width:110px;height:110px;border-radius:50%;background:var(--accent-soft);margin:30px auto 6px;display:grid;place-items:center}
+.pulse span{width:62px;height:62px;border-radius:50%;background:var(--accent);display:block;animation:p 1.1s ease-in-out infinite}
+@keyframes p{50%{transform:scale(.78)}}
+@media (prefers-reduced-motion:reduce){.pulse span{animation:none}}
+.center{text-align:center}
+.toast{font-size:.85rem;color:var(--accent);min-height:1.2em;text-align:center}
+
+/* trace */
+.trace{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:20px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.trace h2,.card h2{font-family:var(--font-display);font-size:1.15rem;margin:0}
+.trace ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+.trace li{display:grid;grid-template-columns:110px minmax(0,1fr);gap:10px;font-size:.9rem;border-left:3px solid var(--line);padding-left:10px}
+.trace li.natlas{border-left-color:var(--accent)}
+.trace li .who{font-family:var(--font-mono);font-size:.74rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;padding-top:2px}
+.trace pre{margin:4px 0 0;font-family:var(--font-mono);font-size:.76rem;background:var(--ground);border-radius:8px;padding:8px;overflow-x:auto;white-space:pre-wrap;word-break:break-word}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:.8rem;color:var(--muted)}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+.empty{color:var(--muted);font-size:.92rem}
+
+/* dashboard */
+.banner{background:var(--warn-soft);color:var(--warn);border-radius:12px;padding:10px 14px;font-size:.9rem;font-weight:700}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+.kpi p{margin:0;font-size:.82rem;color:var(--muted)}
+.kpi strong{display:block;font-family:var(--font-display);font-size:1.9rem;line-height:1.1;margin-top:4px;font-variant-numeric:tabular-nums}
+.kpi .meter{height:6px;background:var(--ground);border-radius:6px;margin-top:10px;overflow:hidden}
+.kpi .meter span{display:block;height:100%;background:var(--accent)}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px 18px;min-width:0;display:flex;flex-direction:column;gap:12px}
+.bars{display:flex;flex-direction:column;gap:9px}
+.bars .b{display:grid;grid-template-columns:96px minmax(0,1fr) 46px;align-items:center;gap:10px;font-size:.88rem}
+.bars .track{height:14px;background:var(--ground);border-radius:4px;overflow:hidden}
+.bars .fill{height:100%;background:var(--accent);border-radius:4px}
+.bars .fill.low{background:var(--warn)}
+.bars .n{text-align:right;font-variant-numeric:tabular-nums;font-family:var(--font-mono);font-size:.8rem}
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.86rem;font-variant-numeric:tabular-nums}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+th{font-size:.75rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:700}
+.note{font-size:.82rem;color:var(--muted);margin:0}
+/* flow */
+.flow{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:20px;overflow-x:auto}
+</style>
+
+<div class="wrap">
+  <header>
+    <div>
+      <p class="fmt">AA 99 H77 BB 55 · NAIC 2026 · PS2 voice-first access</p>
+      <h1>Voice Postcode Assistant</h1>
+      <p class="sub">A clickable prototype of the voice-first postcode helper built on N-ATLAS. Tap through the phone; the panel beside it shows what the system does at each step.</p>
+    </div>
+    <nav role="tablist" aria-label="Views">
+      <button role="tab" id="tab-demo" aria-selected="true" data-view="demo">Prototype</button>
+      <button role="tab" id="tab-dashboard" aria-selected="false" data-view="dashboard">Pilot dashboard</button>
+      <button role="tab" id="tab-flow" aria-selected="false" data-view="flow">Flow</button>
+    </nav>
+  </header>
+
+  <section class="view on" id="view-demo" aria-labelledby="tab-demo">
+    <div class="proto">
+      <div class="phone"><div class="screen" id="screen"></div></div>
+      <aside class="trace" aria-live="polite">
+        <h2>Behind the scenes</h2>
+        <div class="legend"><span><i style="background:var(--accent)"></i>N-ATLAS component</span><span><i style="background:var(--line)"></i>App logic or Postcode API</span></div>
+        <ol id="trace"><li class="empty" style="border:0;padding:0;display:block">Pick a language on the phone to start a session.</li></ol>
+        <p class="note">Prototype only: answers and timings are simulated from the pre-build test results (2 to 4 October 2026). Translations are drafts awaiting native-speaker review.</p>
+      </aside>
+    </div>
+  </section>
+
+  <section class="view" id="view-dashboard" aria-labelledby="tab-dashboard">
+    <div class="stack" style="gap:14px">
+      <div class="banner">Example data. This layout will show the real anonymised interaction log during the pilot; none of these numbers are results.</div>
+      <div class="kpis">
+        <div class="kpi"><p>Real interactions (PS2 minimum 50)</p><strong>63</strong><div class="meter"><span style="width:100%"></span></div></div>
+        <div class="kpi"><p>Left with a valid postcode</p><strong>84%</strong><div class="meter"><span style="width:84%"></span></div></div>
+        <div class="kpi"><p>Did not know their postcode before</p><strong>91%</strong><div class="meter"><span style="width:91%"></span></div></div>
+        <div class="kpi"><p>Said it helped</p><strong>88%</strong><div class="meter"><span style="width:88%"></span></div></div>
+      </div>
+      <div class="grid2">
+        <div class="card"><h2>Interactions by language</h2>
+          <div class="bars" id="bars-lang"></div></div>
+        <div class="card"><h2>ASR word accuracy by language</h2>
+          <div class="bars" id="bars-asr"></div>
+          <p class="note">Checked against what users confirm they said. Below 70% is flagged and the language is labelled beta.</p></div>
+        <div class="card"><h2>What people asked for</h2>
+          <div class="bars" id="bars-intent"></div></div>
+        <div class="card"><h2>Median response time</h2>
+          <div class="bars" id="bars-time"></div>
+          <p class="note">Location answers skip the language model, so they stay fast even on a cold start.</p></div>
+      </div>
+      <div class="card"><h2>Recent sessions</h2>
+        <div class="tbl"><table>
+          <thead><tr><th>Time</th><th>Language</th><th>Input</th><th>Intent</th><th>Postcode</th><th>Reply</th><th>Feedback</th></tr></thead>
+          <tbody id="sessions"></tbody></table></div>
+        <p class="note">No phone numbers, names or coordinates are stored. Each user appears as a one-way hash.</p></div>
+    </div>
+  </section>
+
+  <section class="view" id="view-flow" aria-labelledby="tab-flow">
+    <div class="flow">
+<pre class="mermaid">
+flowchart TD
+  A[User opens link or messages on WhatsApp] --> B{Language chosen?}
+  B -- No --> C[Show 4 languages]
+  C --> D[Main screen]
+  B -- Yes --> D
+  D -- Tap Get my postcode --> E[Share location]
+  E --> F[Postcode API reverse geocode]
+  F -- found --> G[Template reply: code and each segment explained]
+  F -- not found --> H[Ask to move outdoors or try again]
+  D -- Voice note --> I[N-ATLAS ASR for chosen language]
+  I --> J[N-ATLaS intent + places as strict JSON]
+  D -- Typed message --> J
+  J -- get my postcode or place named --> E
+  J -- check a code --> K[Postcode API validate]
+  K --> L[Reply: valid or not found]
+  J -- question --> M[N-ATLaS answers from fact sheet only]
+  J -- unsure --> D
+  G --> N[Did this help?]
+  L --> N
+  M --> N
+  N --> O[(Anonymised interaction log)]
+</pre>
+    </div>
+  </section>
+</div>
+
+<script>
+const L = {
+  en:{name:"English", choose:"Choose your language", intro:"Find and understand your new postcode. Your location is used once, then deleted.", cont:"Continue",
+      what:"What would you like to do?", get:"Get my postcode", getSub:"Tap to share your location", ask:"Ask by voice", askSub:"Tap, then pick a sample question",
+      locating:"Finding your building…", listening:"Listening…", working:"Working on it…", your:"Your postcode is", seg:["State","LGA","District","Area","Building"],
+      copy:"Copy postcode", copied:"Copied", helped:"Did this help?", yes:"Yes", no:"No", thanks:"Thank you. Your answer was recorded.", back:"Back", heard:"We heard",
+      conf:"High confidence · 9.2 m away", samples:["Ask for my postcode","Check a postcode","What is the postcode for?"],
+      valid:"LA-11-A12-GN-01 is a valid postcode.", needLoc:"I can find it. Tap Get my postcode to share your location.",
+      explain:"Your postcode points to your exact building. Use it for deliveries, bank forms and emergency services.",
+      type:"Type instead", typeSub:"Write in Yorùbá, Hausa, Igbo or English", ph:"Example: what is my postcode?", send:"Send", empty:"Write a message first.", notFound:"That postcode was not found. Check each part and try again.", place:"I see you mentioned a place. To get the exact code for your building, tap Get my postcode.",
+      utter:["Please, I want to know my house postcode.","Is LA 11 A12 GN 01 correct?","What is this new postcode for?"]},
+  yo:{name:"Yorùbá", choose:"Yan èdè rẹ", intro:"Wá pósíkòdì tuntun rẹ kí o sì mọ ìtumọ̀ rẹ̀. A ń lo ibi tí o wà lẹ́ẹ̀kan ṣoṣo.", cont:"Tẹ̀síwájú",
+      what:"Kí lo fẹ́ ṣe?", get:"Wá pósíkòdì mi", getSub:"Tẹ láti fi ibi tí o wà ránṣẹ́", ask:"Béèrè pẹ̀lú ohùn", askSub:"Tẹ, kí o yan ìbéèrè àpẹẹrẹ",
+      locating:"Ó ń wá ilé rẹ…", listening:"Mò ń gbọ́…", working:"Ó ń ṣiṣẹ́…", your:"Pósíkòdì rẹ ni", seg:["Ìpínlẹ̀","Ìjọba ìbílẹ̀","Agbègbè","Àdúgbò","Ilé"],
+      copy:"Ṣẹ̀dà pósíkòdì", copied:"A ti ṣẹ̀dà rẹ̀", helped:"Ṣé èyí ràn ọ́ lọ́wọ́?", yes:"Bẹ́ẹ̀ni", no:"Rárá", thanks:"O ṣeun. A ti gba ìdáhùn rẹ.", back:"Padà", heard:"Ohun tí a gbọ́",
+      conf:"Ìgbẹ́kẹ̀lé gíga · 9.2 m", samples:["Béèrè pósíkòdì mi","Ṣàyẹ̀wò pósíkòdì","Kí ni pósíkòdì wà fún?"],
+      valid:"LA-11-A12-GN-01 jẹ́ pósíkòdì tó wúlò.", needLoc:"Mo lè rí i. Tẹ Wá pósíkòdì mi láti fi ibi tí o wà ránṣẹ́.",
+      explain:"Pósíkòdì rẹ fi ilé rẹ gan-an hàn. Lò ó fún ìfijiṣẹ́, fọ́ọ̀mù báńkì àti pàjáwìrì.",
+      type:"Kọ ọ̀rọ̀ dípò", typeSub:"Kọ ní Yorùbá, Hausa, Igbo tàbí Gẹ̀ẹ́sì", ph:"Àpẹẹrẹ: kí ni pósíkòdì mi?", send:"Firánṣẹ́", empty:"Kọ ọ̀rọ̀ kan kọ́kọ́.", notFound:"A kò rí pósíkòdì yẹn. Ṣàyẹ̀wò apá kọ̀ọ̀kan kí o tún gbìyànjú.", place:"Mo rí i pé o dárúkọ ibì kan. Láti rí kóòdù ilé rẹ gan-an, tẹ Wá pósíkòdì mi.",
+      utter:["ẹjọ́, mo fẹ́ mọ pósíkòdì ilé mi, mo ń gbé ní ibìẹ̀jùlẹ́kí etí ọ̀sà lagos","ṣé LA 11 A12 GN 01 tọ̀nà?","kí ni pósíkòdì tuntun yìí wà fún?"]},
+  ha:{name:"Hausa", choose:"Zaɓi harshenka", intro:"Nemo kuma ka fahimci sabuwar lambar gidan wayarka. Ana amfani da wurinka sau ɗaya kawai.", cont:"Ci gaba",
+      what:"Me kake so ka yi?", get:"Nemo lambata", getSub:"Taɓa don aika wurinka", ask:"Tambaya da murya", askSub:"Taɓa, sannan zaɓi tambaya",
+      locating:"Ana neman gidanka…", listening:"Ina saurare…", working:"Ana aiki…", your:"Lambar gidan wayarka ita ce", seg:["Jiha","Ƙaramar hukuma","Gunduma","Unguwa","Gida"],
+      copy:"Kwafi lambar", copied:"An kwafa", helped:"Shin wannan ya taimaka?", yes:"Eh", no:"A'a", thanks:"Na gode. An karɓi amsarka.", back:"Koma", heard:"Abin da muka ji",
+      conf:"Tabbaci mai yawa · 9.2 m", samples:["Nemi lambata","Duba lamba","Menene amfanin lambar?"],
+      valid:"LA-11-A12-GN-01 lamba ce mai inganci.", needLoc:"Zan iya nemo ta. Taɓa Nemo lambata don aika wurinka.",
+      explain:"Lambar tana nuna ainihin gidanka. Yi amfani da ita don isar da kaya, takardun banki da gaggawa.",
+      type:"Rubuta maimakon haka", typeSub:"Rubuta da Yorùbá, Hausa, Igbo ko Turanci", ph:"Misali: menene lambata?", send:"Aika", empty:"Rubuta saƙo tukuna.", notFound:"Ba a sami wannan lambar ba. Duba kowane sashe ka sake gwadawa.", place:"Na ga ka ambaci wani wuri. Don samun ainihin lambar gidanka, taɓa Nemo lambata.",
+      utter:["don allah, menene lambar gidan waya ta gidana?","shin LA 11 A12 GN 01 daidai ne?","menene amfanin sabuwar lambar gidan waya?"]},
+  ig:{name:"Igbo", choose:"Họrọ asụsụ gị", intro:"Chọta ma ghọta koodu ozi ọhụrụ gị. A na-eji ebe ị nọ naanị otu ugboro.", cont:"Gaa n'ihu",
+      what:"Gịnị ka ị chọrọ ime?", get:"Chọta koodu m", getSub:"Pịa iji ziga ebe ị nọ", ask:"Jụọ site n'olu", askSub:"Pịa, wee họrọ ajụjụ",
+      locating:"Ana achọ ụlọ gị…", listening:"Ana m ege ntị…", working:"Ọ na-arụ ọrụ…", your:"Koodu ozi gị bụ", seg:["Steeti","Ọchịchị ime obodo","Mpaghara","Obodo nta","Ụlọ"],
+      copy:"Detuo koodu", copied:"Edetuola", helped:"Ọ nyere gị aka?", yes:"Ee", no:"Mba", thanks:"Daalụ. Anatala azịza gị.", back:"Laghachi", heard:"Ihe anyị nụrụ",
+      conf:"Ntụkwasị obi dị elu · 9.2 m", samples:["Jụọ koodu m","Lelee koodu","Gịnị bụ uru koodu a?"],
+      valid:"LA-11-A12-GN-01 bụ koodu ziri ezi.", needLoc:"Enwere m ike ịchọta ya. Pịa Chọta koodu m iji ziga ebe ị nọ.",
+      explain:"Koodu a na-egosi ụlọ gị kpọmkwem. Jiri ya maka nnyefe ngwongwo, akwụkwọ ụlọ akụ na ihe mberede.",
+      type:"Dee kama", typeSub:"Dee n'Yorùbá, Hausa, Igbo ma ọ bụ Bekee", ph:"Ọmụmaatụ: kedu koodu m?", send:"Ziga", empty:"Dee ozi mbụ.", notFound:"Achọtaghị koodu ahụ. Lelee akụkụ ọ bụla ma nwaa ọzọ.", place:"Ahụrụ m na ị kpọrọ otu ebe. Iji nweta koodu kpọmkwem nke ụlọ gị, pịa Chọta koodu m.",
+      utter:["biko, kedu koodu ozi maka ebe m bi?","LA 11 A12 GN 01 ọ ziri ezi?","gịnị bụ uru koodu ozi ọhụrụ a?"]}
+};
+const ASR = {en:"NCAIR1/NigerianAccentedEnglish", yo:"NCAIR1/Yoruba-ASR", ha:"NCAIR1/Hausa-ASR", ig:"NCAIR1/Igbo-ASR"};
+const CODE = ["LA","11","A12","GN","01"];
+let lang = null, voted = false;
+const $s = document.getElementById("screen"), $t = document.getElementById("trace");
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const pin = '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>';
+const kb = '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M7 10h.01M11 10h.01M15 10h.01M7 14h10"/></svg>';
+const mic = '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>';
+
+function trace(steps, reset){
+  if(reset) $t.innerHTML = "";
+  steps.forEach(([who, text, data, natlas]) => {
+    const li = document.createElement("li");
+    if(natlas) li.className = "natlas";
+    li.innerHTML = `<span class="who">${esc(who)}</span><div>${esc(text)}${data?`<pre>${esc(data)}</pre>`:""}</div>`;
+    $t.appendChild(li);
+  });
+}
+function bar(){ return `<div class="bar"><b>Postcode helper</b>${lang?`<button class="link" id="b-lang">${esc(L[lang].name)} · change</button>`:"<span>Demo</span>"}</div>`; }
+function wire(){ const b=document.getElementById("b-lang"); if(b) b.onclick=()=>{lang=null; showLang();}; }
+
+function showLang(){
+  const t = L.en;
+  $s.innerHTML = bar() + `<p class="s-title">Choose your language</p><p class="s-text">${esc(t.intro)}</p>
+    <div class="stack">${Object.keys(L).map(k=>`<button class="big" data-l="${k}">${esc(L[k].name)}</button>`).join("")}</div>
+    <p class="foot">Powered by N-ATLaS: an initiative of FMCIDE, powered by Awarri Technologies</p>`;
+  $s.querySelectorAll("[data-l]").forEach(b=>b.onclick=()=>{ lang=b.dataset.l;
+    trace([["Session","New session started. Language saved for this user.",`{"user":"hash:7f3a…","language":"${lang}"}`]], true); home(); });
+  wire();
+}
+function home(){
+  const t = L[lang]; voted = false;
+  $s.innerHTML = bar() + `<p class="s-title">${esc(t.what)}</p>
+    <div class="stack">
+      <button class="big primary" id="b-get">${pin}<span>${esc(t.get)}</span><small>${esc(t.getSub)}</small></button>
+      <button class="big voice" id="b-ask">${mic}<span>${esc(t.ask)}</span><small>${esc(t.askSub)}</small></button>
+      <button class="big" id="b-type">${kb}<span>${esc(t.type)}<br><small style="opacity:.75">${esc(t.typeSub)}</small></span></button>
+    </div><p class="foot">Powered by N-ATLaS</p>`;
+  document.getElementById("b-get").onclick = locate;
+  document.getElementById("b-ask").onclick = pickSample;
+  document.getElementById("b-type").onclick = typeScreen;
+  wire();
+}
+function waiting(msg){ $s.innerHTML = bar() + `<div class="pulse"><span></span></div><p class="s-title center">${esc(msg)}</p>`; wire(); }
+
+function locate(){
+  const t = L[lang]; waiting(t.locating);
+  trace([["Device","User allowed location. Coordinates used for this lookup only.",'lat 6.6018, lng 3.3515']]);
+  setTimeout(()=>{
+    trace([["Postcode API","GET /v1/search/reverse",'{"found":true,"unit":{"postcode":"LA-11-A12-GN-01","distance_m":9.2,"confidence":"high"}}'],
+           ["Template",`Segment explanation filled from the ${t.name} template. No language model, so the code cannot be altered.`],
+           ["Privacy","Coordinates discarded. Log row written without location."]]);
+    result();
+  }, 1300);
+}
+function result(note){
+  const t = L[lang];
+  $s.innerHTML = bar() + `${note?`<p class="answer">${esc(note)}</p>`:""}
+    <div class="code"><p class="lbl">${esc(t.your)}</p><p class="val">${CODE.join(" ")}</p></div>
+    <span class="chip">${esc(t.conf)}</span>
+    <dl class="segs">${CODE.map((c,i)=>`<dt>${c}</dt><dd>${esc(t.seg[i])}${i===0?" · Lagos":""}</dd>`).join("")}</dl>
+    <button class="small" id="b-copy" style="flex:none">${esc(t.copy)}</button>
+    <p class="toast" id="toast"></p>
+    ${feedback()}`;
+  document.getElementById("b-copy").onclick = async () => {
+    const msg = document.getElementById("toast");
+    try { await navigator.clipboard.writeText("LA-11-A12-GN-01"); msg.textContent = t.copied; }
+    catch(e){ msg.textContent = "LA-11-A12-GN-01"; }
+  };
+  wireFeedback(); wire();
+}
+function feedback(){ const t=L[lang]; return `<div style="margin-top:auto" class="stack"><p class="s-text center">${esc(t.helped)}</p>
+  <div class="row"><button class="small" data-fb="yes">${esc(t.yes)}</button><button class="small" data-fb="no">${esc(t.no)}</button></div>
+  <button class="link" id="b-back">${esc(t.back)}</button></div>`; }
+function wireFeedback(){
+  const t=L[lang];
+  $s.querySelectorAll("[data-fb]").forEach(b=>b.onclick=()=>{
+    if(voted) return; voted=true;
+    b.parentElement.outerHTML = `<p class="toast">${esc(t.thanks)}</p>`;
+    trace([["Log",`Feedback recorded: ${b.dataset.fb}.`]]);
+  });
+  document.getElementById("b-back").onclick = home;
+}
+function pickSample(){
+  const t = L[lang];
+  $s.innerHTML = bar() + `<p class="s-title">${esc(t.ask)}</p><p class="s-text">Prototype: pick what the user says. In the live app this is a real voice note.</p>
+    <div class="stack">${t.samples.map((s,i)=>`<button class="big" data-s="${i}">${mic}<span>${esc(s)}</span></button>`).join("")}</div>
+    <button class="link" id="b-back2">${esc(t.back)}</button>`;
+  $s.querySelectorAll("[data-s]").forEach(b=>b.onclick=()=>voice(+b.dataset.s));
+  document.getElementById("b-back2").onclick = home; wire();
+}
+function voice(i){
+  const t = L[lang]; waiting(t.listening);
+  const intents = ["get_my_postcode","validate_postcode","explain_postcode"];
+  setTimeout(()=>{
+    waiting(t.working);
+    trace([["N-ATLAS ASR",`Voice note transcribed with ${ASR[lang]}.`, t.utter[i], true],
+           ["N-ATLaS LLM","Intent and places as strict JSON (few-shot + schema, keyword safety net).",
+             JSON.stringify({intent:intents[i], places_mentioned: i===0 && lang==="yo" ? ["Ibeju-Lekki","Eti-Osa","Lagos"] : []}), true]]);
+  }, 1100);
+  setTimeout(()=>{
+    if(i===0){
+      trace([["App","Postcode request: ask the user to share their location."]]);
+      answer(t.utter[i], t.needLoc, true);
+    } else if(i===1){
+      trace([["App","Code found in transcript: LA-11-A12-GN-01."],["Postcode API","GET /v1/lookup?level=1",'{"postcode":"LA-11-A12-GN-01","valid":true,"status":"valid"}']]);
+      answer(t.utter[i], t.valid);
+    } else {
+      trace([["N-ATLaS LLM",`Short answer written in ${t.name} from the fact sheet only.`, t.explain, true]]);
+      answer(t.utter[i], t.explain);
+    }
+  }, 2600);
+}
+function typeScreen(){
+  const t = L[lang];
+  $s.innerHTML = bar() + `<p class="s-title">${esc(t.type)}</p><p class="s-text">${esc(t.typeSub)}</p>
+    <form id="chat" class="stack" novalidate>
+      <label for="msg" class="s-text" style="font-size:.85rem">Message</label>
+      <textarea id="msg" rows="3" placeholder="${esc(t.ph)}" style="font:inherit;font-size:1rem;border-radius:14px;border:1.5px solid var(--line);background:var(--ground);color:var(--ink);padding:12px;resize:vertical"></textarea>
+      <p id="err" class="s-text" style="color:var(--bad);font-size:.85rem;min-height:1.2em"></p>
+      <button class="big primary" style="min-height:56px" type="submit">${esc(t.send)}</button>
+    </form>
+    <p class="s-text" style="font-size:.8rem">Try: <button class="link" data-ex="Is LA-11-A12-GN-01 correct?">a postcode</button> · <button class="link" data-ex="Kí ni pósíkòdì mi? Mo ń gbé ní Ibeju Lekki">Yorùbá request</button> · <button class="link" data-ex="Menene amfanin sabuwar lambar gidan waya?">Hausa question</button></p>
+    <button class="link" id="b-back3">${esc(t.back)}</button>`;
+  const box = document.getElementById("msg"), err = document.getElementById("err");
+  box.oninput = () => { err.textContent = ""; };
+  $s.querySelectorAll("[data-ex]").forEach(b => b.onclick = () => { box.value = b.dataset.ex; err.textContent = ""; box.focus(); });
+  document.getElementById("chat").onsubmit = e => { e.preventDefault();
+    const text = box.value.trim();
+    if(!text){ err.textContent = t.empty; box.focus(); return; }
+    chat(text); };
+  document.getElementById("b-back3").onclick = home; wire();
+}
+function chat(text){
+  const t = L[lang]; waiting(t.working);
+  const m = text.match(/\b([A-Za-z]{2})[\s-]?(\d{2})[\s-]?([A-Za-z0-9]{3})[\s-]?([A-Za-z]{2})[\s-]?(\d{2})\b/);
+  const code = m ? [m[1],m[2],m[3],m[4],m[5]].join("-").toUpperCase() : null;
+  const askWords = /(postcode|post code|pósíkòdì|posikodi|kóòdù|koodu|lamba|zip|adirẹsi|address)/i;
+  const places = ["Ibeju Lekki","Ibeju-Lekki","Ikeja","Kano","Enugu","Lagos","Abuja","Eti-Osa","Yaba"].filter(p => text.toLowerCase().includes(p.toLowerCase()));
+  const intent = code ? "validate_postcode" : (askWords.test(text) && !/(amfani|for\?|wà fún|uru)/i.test(text) ? "get_my_postcode" : (places.length ? "get_my_postcode" : "explain_postcode"));
+  trace([["Chat","Typed message received. No ASR needed, same pipeline as voice from here.", text],
+         ["N-ATLaS LLM","Intent and places as strict JSON (few-shot + schema, keyword safety net).", JSON.stringify({intent, places_mentioned: places, postcode: code}), true]]);
+  setTimeout(() => {
+    if(intent === "validate_postcode"){
+      const ok = code === "LA-11-A12-GN-01";
+      trace([["Postcode API","GET /v1/lookup?code="+code+"&level=1", ok ? '{"valid":true,"status":"valid"}' : '{"valid":false,"status":"not_found"}']]);
+      answer(text, ok ? t.valid : t.notFound);
+    } else if(intent === "get_my_postcode"){
+      trace([["App", places.length ? "Place named, but the API needs coordinates for a building code. Asking for location." : "Postcode request: ask the user to share their location."]]);
+      answer(text, places.length ? t.place : t.needLoc, true);
+    } else {
+      trace([["N-ATLaS LLM",`Short answer written in ${t.name} from the fact sheet only.`, t.explain, true]]);
+      answer(text, t.explain);
+    }
+  }, 1500);
+}
+function answer(heard, text, offerLoc){
+  const t = L[lang];
+  $s.innerHTML = bar() + `<p class="heard">${esc(t.heard)}: “${esc(heard)}”</p><p class="answer">${esc(text)}</p>
+    ${offerLoc?`<button class="big primary" id="b-get2">${pin}<span>${esc(t.get)}</span></button>`:""}
+    ${feedback()}`;
+  if(offerLoc) document.getElementById("b-get2").onclick = locate;
+  wireFeedback(); wire();
+}
+
+/* dashboard (example data) */
+function bars(id, rows, max, unit, lowBelow){
+  document.getElementById(id).innerHTML = rows.map(([k,v])=>`<div class="b"><span>${esc(k)}</span><div class="track"><div class="fill${lowBelow&&v<lowBelow?" low":""}" style="width:${Math.round(v/max*100)}%"></div></div><span class="n">${v}${unit}</span></div>`).join("");
+}
+bars("bars-lang", [["Yorùbá",24],["Hausa",17],["English",13],["Igbo",9]], 24, "");
+bars("bars-asr", [["English",89],["Hausa",81],["Yorùbá",78],["Igbo",64]], 100, "%", 70);
+bars("bars-intent", [["My postcode",41],["Explain it",10],["Check a code",9],["Other",3]], 41, "");
+bars("bars-time", [["Location",1.8],["Voice",6.4]], 6.4, " s");
+const rows = [["14:52","Yorùbá","Voice","get_my_postcode","Found","5.9 s","Yes"],["14:47","Hausa","Location","—","Found","1.6 s","Yes"],
+  ["14:41","Igbo","Voice","explain_postcode","—","7.2 s","No"],["14:33","English","Voice","validate_postcode","Valid","4.8 s","Yes"],
+  ["14:20","Yorùbá","Location","—","Not found","2.1 s","No"],["14:12","Hausa","Voice","get_my_postcode","Found","6.6 s","Yes"]];
+document.getElementById("sessions").innerHTML = rows.map(r=>`<tr>${r.map((c,i)=>`<td>${i===4&&c==="Not found"?`<span class="chip warn">${c}</span>`:esc(c)}</td>`).join("")}</tr>`).join("");
+
+/* tabs */
+const tabs = document.querySelectorAll("[role=tab]");
+function show(v){
+  tabs.forEach(b=>b.setAttribute("aria-selected", String(b.dataset.view===v)));
+  document.querySelectorAll(".view").forEach(s=>s.classList.toggle("on", s.id==="view-"+v));
+}
+tabs.forEach(b=>b.onclick=()=>{ show(b.dataset.view); try{ history.replaceState(null,"","#"+b.dataset.view);}catch(e){} });
+const h = (location.hash||"").slice(1); if(["demo","dashboard","flow"].includes(h)) show(h);
+showLang();
+</script>

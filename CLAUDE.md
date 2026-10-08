@@ -105,7 +105,8 @@ app/
 data/
   states.json          (exists) state codes -> names, documented codes only (11 so far)
   fact_sheet_<lang>.md (planned) facts the LLM may use for explain_postcode
-web/index.html         (planned) low-bandwidth page, < 50 KB, no frameworks
+web/index.html         (planned) low-bandwidth page, no frameworks; must match web/design/prototype.html
+web/design/prototype.html (exists) design source of truth (phone screen of the Prototype tab only)
 deploy/
   natlas_serve.py      (exists) vLLM on L4, OpenAI-compatible, API-key protected
 tests/                 unit tests only: no network, run by `pytest -q`
@@ -209,6 +210,7 @@ Quality: Yoruba and Hausa good, Igbo weaker (label it beta). Place names come ou
 - Ruff for lint and format: `ruff check . && ruff format .`.
 - Log with `print`/`logging` as one JSON line per event; never log coordinates, audio or raw session IDs.
 - User-facing strings live only in `app/templates/<lang>.json`, never inline in code.
+- **Web page contract.** The web page must match `web/design/prototype.html` exactly: colours, fonts, layout, spacing, components and screen order. Do not redesign it. Use only the phone screen from the Prototype tab (leave out the tabs, trace panel, dashboard and flow view). Keep its `:root` tokens (light and dark), its fonts (Bricolage Grotesque display, Atkinson Hyperlegible body, JetBrains Mono for codes) and its class names. Strings come from `app/templates`, data from `/api/*`. When the page is built, put 360 px screenshots of each screen next to the prototype's in `docs/ui-compare/`. Glyph gaps and the fallback rule are in SPEC.md §1 Front end.
 - **Template keys are frozen** (8 Oct, for the native-speaker review). Do not add, rename or remove a
   key without asking the user first. Changing English wording also needs the review sheets regenerated.
 - Store user text only through `app.privacy.for_storage()` (scrubbed: numbers, phones, emails; capped at
@@ -274,3 +276,4 @@ account is locked. The Twilio echo prototype is kept in `archive/twillo_echo.py`
 - 2026-10-08: Onboarding is language -> consent -> knew_before -> ready. `app/privacy.py` scrubs PII
   before storage (300-char cap). `llm_status` in the log. Anonymous daily decline counter. `ask_code`
   offers code or location. Template keys frozen; review sheets in `docs/review/`.
+- 2026-10-08: `web/design/prototype.html` is the design source of truth (web page contract above).

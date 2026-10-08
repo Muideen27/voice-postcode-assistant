@@ -84,6 +84,25 @@ Versions below are what Modal's mirror installed in our working images on 4 to 8
 | Audio capture | `MediaRecorder` (Opus/WebM on Android, MP4/AAC on iOS) | Max 20 s per recording |
 | Location | `navigator.geolocation.getCurrentPosition`, `enableHighAccuracy: true`, timeout 15 s | HTTPS only |
 | Browsers supported | Chrome for Android 100+, Samsung Internet 20+, Safari iOS 15+ | Test on one low-end Android phone |
+| Design | `web/design/prototype.html` | Source of truth; see contract below |
+
+**Web page contract.** The web page must match `web/design/prototype.html` exactly: colours, fonts, layout, spacing, components and screen order. Do not redesign it. Use only the phone screen from the Prototype tab (leave out the tabs, trace panel, dashboard and flow view). Keep its `:root` tokens (light and dark), its fonts (Bricolage Grotesque display, Atkinson Hyperlegible body, JetBrains Mono for codes) and its class names. Strings come from `app/templates`, data from `/api/*`. When the page is built, put 360 px screenshots of each screen next to the prototype's in `docs/ui-compare/`.
+
+**Glyph coverage** (checked 8 Oct 2026 against the Google Fonts files the prototype loads, all subsets):
+
+| Font | Missing of ẹ ọ ṣ à á è é ì í ò ó ù ú ń ɓ ɗ ƙ ƴ ị ụ ṅ | Also missing |
+|---|---|---|
+| Atkinson Hyperlegible 400/700 (body) | ẹ ọ ṣ ɓ ɗ ƙ ƴ ị ụ ṅ | uppercase Ẹ Ọ Ṣ Ɓ Ɗ Ƙ Ƴ Ị Ụ Ṅ; combining dot below U+0323 |
+| Bricolage Grotesque 500/700 (display) | ṣ ɓ ɗ ƙ ƴ ṅ | uppercase Ṣ Ɓ Ɗ Ƙ Ƴ Ṅ |
+| JetBrains Mono 500/700 (codes) | ṣ ɓ ɗ ƙ ƴ ṅ | uppercase Ṣ Ɓ Ɗ Ƙ Ƴ Ṅ |
+
+All three have à á è é ì í ò ó ù ú ń and the combining grave/acute. Fix (when the page is built): keep the
+fonts; add one fallback `@font-face` restricted by `unicode-range` to exactly the missing code points
+above (plus U+0323 for the body font), listed after each family in its stack. No font swap.
+
+**Open: transfer budget.** The prototype's fonts are ~200 KB on first load (Atkinson ~53 KB, Bricolage
+variable ~120 KB incl. latin-ext/vietnamese, JetBrains Mono ~26 KB), against "< 50 KB before audio".
+Needs a decision before the page is built (e.g. budget the HTML/JS/CSS only, or subset/self-host).
 
 ---
 
@@ -262,6 +281,9 @@ Sessions live in a `modal.Dict` keyed by `user_hash`, stored as plain dicts:
 `{stage: "consent"|"knew_before"|"ready", lang, awaiting_feedback, turns}`. Stage `new` (language menu)
 is never stored: a session is written only once a language is chosen. No postcode, coordinates or text are
 kept in the session. Declining consent deletes the session.
+Unconsented sessions (stage `consent`) expire after **30 minutes** without a reply: `main.py` deletes them
+(TTL by a `created_ts` check on read plus a periodic sweep). Consented sessions follow the Modal Dict's
+own retention.
 
 Declines: an anonymous daily counter in its own `modal.Dict`, `{"YYYY-MM-DD": count}` (WAT), with no
 hash, session or text. `scripts/export_log.py` reports it alongside the log summary.
@@ -331,3 +353,6 @@ The Twilio echo prototype is kept in `archive/twillo_echo.py`.
 - 2026-10-08: Onboarding order language → consent → knew_before; new `POST /api/consent`; `/api/language`
   returns the welcome. PII scrub + 300-char cap on stored text. `llm_status` added to the log schema.
   Anonymous daily decline counter. `ask_code` shows location button and text box. Template keys frozen.
+- 2026-10-08: Web page contract: match `web/design/prototype.html` exactly (phone screen only). Glyph
+  coverage table and unicode-range fallback rule. Open question on font transfer size vs the 50 KB budget.
+  30-minute TTL for unconsented sessions (implemented in `main.py`).
