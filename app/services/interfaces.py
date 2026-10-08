@@ -13,6 +13,7 @@ AsrErrorKind = Literal["too_long", "bad_audio", "timeout", "unavailable"]
 @dataclass(frozen=True)
 class IntentResult:
     intent: Intent
+    confidence: float | None = None  # below prompts.LOW_CONFIDENCE the orchestrator treats it as "other"
     places_mentioned: tuple[str, ...] = ()  # logged for analysis only; never used as a fact
 
 

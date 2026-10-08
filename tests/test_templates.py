@@ -9,6 +9,7 @@ import pytest
 from app.events import LANGS
 
 TEMPLATES = Path(__file__).resolve().parents[1] / "app" / "templates"
+DATA = Path(__file__).resolve().parents[1] / "data"
 ATTRIBUTION = (
     "N-ATLaS is an initiative of the Federal Ministry of Communications, Innovation and Digital Economy, "
     "and powered by Awarri Technologies."
@@ -64,3 +65,10 @@ def test_attribution_is_verbatim(lang: str) -> None:
 @pytest.mark.parametrize("lang", ["yo", "ha", "ig"])
 def test_pilot_gate_all_strings_reviewed(lang: str) -> None:
     assert load(lang)["_todo_review"] == [], f"{lang}: native-speaker review still pending"
+
+
+@pytest.mark.pilot
+@pytest.mark.parametrize("lang", ["yo", "ha", "ig"])
+def test_pilot_gate_fact_sheet_reviewed(lang: str) -> None:
+    first_lines = (DATA / f"fact_sheet_{lang}.md").read_text(encoding="utf-8").splitlines()[:3]
+    assert first_lines == ["---", "review: done", "---"], f"{lang}: fact sheet review still pending"

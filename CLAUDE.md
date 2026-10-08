@@ -95,8 +95,8 @@ app/
     interfaces.py      (exists) Protocols for intent/reply/ASR/postcode services + IntentResult, AsrError,
                        LlmError
     asr.py             (planned) Modal GPU class, loads 4 ASR models once
-    llm.py             (planned) client for the vLLM endpoint (intent + reply)
-    prompts.py         (planned) all LLM prompt text
+    llm.py             (exists) N-ATLaS client: NatlasIntent, NatlasExplain, output guard
+    prompts.py         (exists) all LLM prompt text, few-shot, schema, request params
     postcode.py        (exists) reverse, lookup, segments, postcode regex/normalise
   templates/           (exists) reply strings per language: en.json, yo.json, ha.json, ig.json
   store.py             (exists) user hashing, sessions (Modal Dict), interaction log (Volume, JSONL),
@@ -104,7 +104,7 @@ app/
   privacy.py           (exists) scrub()/for_storage(): PII removed + 300-char cap before storing text
 data/
   states.json          (exists) state codes -> names, documented codes only (11 so far)
-  fact_sheet_<lang>.md (planned) facts the LLM may use for explain_postcode
+  fact_sheet_<lang>.md (exists) facts the LLM may use for explain_postcode (`review:` front matter)
 web/index.html         (planned) low-bandwidth page, no frameworks; must match web/design/prototype.html
 web/design/prototype.html (exists) design source of truth (phone screen of the Prototype tab only)
 deploy/
@@ -118,9 +118,11 @@ tests/                 unit tests only: no network, run by `pytest -q`
   test_privacy.py      (exists) NIN, phone, email scrubbing; postcodes survive
   test_review_scripts.py (exists) review sheet round trip
 evals/                 live-model checks (need GPU/network), never collected by pytest
-  natlas_final_test.py (exists) intent + grounded-reply evals (laptop or Modal)
+  natlas_final_test.py (exists) live intent + explain evals; imports prompts.py/llm.py (no copies)
+  cases.py             (exists) 40 intent + 12 explain held-out cases
+  runs/                (exists) one JSON per eval run
   test_natlas_asr.py   (exists) ASR access check + transcription
-  results.md           (planned) eval scores, one entry per prompt change
+  results.md           (exists) eval scores, one entry per prompt change
 scripts/
   export_log.py        (planned) interaction log -> CSV/PDF evidence
   record_postcode_fixtures.py (exists) refresh tests/fixtures/postcode from the live API
@@ -155,8 +157,9 @@ export NATLAS_API_KEY=$(cat natlas_api_key.txt)
 curl -L "$NATLAS_URL/v1/models" -H "Authorization: Bearer $NATLAS_API_KEY"   # health
 
 # evals (live models; record scores in evals/results.md)
+python evals/natlas_final_test.py            # health + intent + explain, writes evals/runs/*.json
 python evals/natlas_final_test.py intent
-python evals/natlas_final_test.py reply
+python evals/natlas_final_test.py explain
 python evals/test_natlas_asr.py check
 python evals/test_natlas_asr.py yo sample.wav
 
@@ -277,3 +280,5 @@ account is locked. The Twilio echo prototype is kept in `archive/twillo_echo.py`
   before storage (300-char cap). `llm_status` in the log. Anonymous daily decline counter. `ask_code`
   offers code or location. Template keys frozen; review sheets in `docs/review/`.
 - 2026-10-08: `web/design/prototype.html` is the design source of truth (web page contract above).
+- 2026-10-08: `prompts.py`, `llm.py` (guard), fact sheets (yo/ha/ig in the review flow), evals rebuilt on
+  `prompts.py` with 40 + 12 held-out cases; results in `evals/results.md`.

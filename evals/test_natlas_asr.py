@@ -10,6 +10,7 @@ Setup (once):
     pip install -U "huggingface_hub[cli]" transformers torch librosa soundfile
     hf auth login        # paste a READ token from huggingface.co/settings/tokens
 """
+
 import sys
 
 from huggingface_hub import hf_hub_download

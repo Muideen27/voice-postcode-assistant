@@ -1,0 +1,666 @@
+{
+  "date": "2026-10-08T20:11:07+00:00",
+  "commit": "e92db3b",
+  "dirty": true,
+  "health": {
+    "status": 200,
+    "seconds": 134.3
+  },
+  "intent": {
+    "rows": [
+      {
+        "lang": "en",
+        "text": "Hello, can you tell me my postcode? I stay in Surulere.",
+        "expected": "get_my_postcode",
+        "llm_intent": "get_my_postcode",
+        "confidence": 0.95,
+        "llm_status": "ok",
+        "routed_intent": "get_my_postcode",
+        "raw_ok": true,
+        "routed_ok": true,
+        "ms": 4254
+      },
+      {
+        "lang": "en",
+        "text": "i wan know my post code for my house for yaba",
+        "expected": "get_my_postcode",
+        "llm_intent": "get_my_postcode",
+        "confidence": 0.95,
+        "llm_status": "ok",
+        "routed_intent": "get_my_postcode",
+        "raw_ok": true,
+        "routed_ok": true,
+        "ms": 2094
+      },
+      {
+        "lang": "en",
+        "text": "Is OG-02-B11-AA-07 a real postcode?",
+        "expected": "validate_postcode",
+        "llm_intent": "validate_postcode",
+        "confidence": 0.75,
+        "llm_status": "ok",
+        "routed_intent": "validate_postcode",
+        "raw_ok": true,
+        "routed_ok": true,
+        "ms": 1945
+      },
+      {
+        "lang": "en",
+        "text": "how can i know if the postcode they gave me is correct",
+        "expected": "validate_postcode",
+        "llm_intent": "validate_postcode",
+        "confidence": 0.8,
+        "llm_status": "ok",
+        "routed_intent": "validate_postcode",
+        "raw_ok": true,
+        "routed_ok": true,
+        "ms": 1944
+      },
+      {
+        "lang": "en",
+        "text": "What is the meaning of the numbers in a postcode?",
+        "expected": "explain_postcode",
+        "llm_intent": "explain_postcode",
+        "confidence": 0.8,
+        "llm_status": "ok",
+        "routed_intent": "explain_postcode",
+        "raw_ok": true,
+        "routed_ok": true,
+        "ms": 1916
+      },
+      {
+        "lang": "en",
+        "text": "wat is d district part for postcode mean",
+        "expected": "explain_postcode",
+        "llm_intent": "explain_postcode",
+        "confidence": 0.8,
+        "llm_status": "ok",
+        "routed_intent": "explain_postcode",
+        "raw_ok": true,
+        "routed_ok": true,
+        "ms": 1903
+      },
+      {
+        "lang": "en",
+        "text": "Good evening",
+        "expected": "greeting",
+        "llm_intent": "greeting",
+        "confidence": 0.8,
+        "llm_status": "ok",
+        "routed_intent": "greeting",
+        "raw_ok": true,
+        "routed_ok": true,
+        "ms": 1839
+      },
+      {
+        "lang": "en",
+        "text": "thank you so much",
+        "expected": "greeting",
+        "llm_intent": "greeting",
+        "confidence": 0.95,
+        "llm_status": "ok",
+        "routed_intent": "greeting",
+        "raw_ok": true,
+        "routed_ok": true,
+        "ms": 1876
+      },
+      {
+        "lang": "en",
+        "text": "What time does the bank open?",
+        "expected": "other",
+        "llm_intent": "other",
+        "confidence": 0.8,
+        "llm_status": "ok",
+        "routed_intent": "other",
+        "raw_ok": true,
+        "routed_ok": true,
+        "ms": 1875
+      },
+      {
+        "lang": "en",
+        "text": "uh my postcode is la eleven a twelve g n zero one is it correct",
+        "expected": "validate_postcode",
+        "llm_intent": "validate_postcode",
+        "confidence": 0.75,
+        "llm_status": "ok",
+        "routed_intent": "validate_postcode",
+        "raw_ok": true,
+        "routed_ok": true,
+        "ms": 1906
+      },
+      {
+        "lang": "yo",
+        "text": "Ẹ jọ̀wọ́, kí ni pósíkòdì ibi tí mo ń gbé? Mo wà ní Ìbàdàn.",
+        "expected": "get_my_postcode",
+        "llm_intent": "get_my_postcode",
+        "confidence": 0.95,
+        "llm_status": "ok",
+        "routed_intent": "get_my_postcode",
+        "raw_ok": true,
+        "routed_ok": true,
+        "ms": 2508
+      },
+      {
+        "lang": "yo",
+        "text": "mo fe mo koodu ile mi ni ikorodu",
+        "expected": "get_my_postcode",
+        "llm_intent": "get_my_postcode",
+        "confidence": 0.8,
+        "llm_status": "ok",
+        "routed_intent": "get_my_postcode",
+        "raw_ok": true,
+        "routed_ok": true,
+        "ms": 2152
+      },
+      {
+        "lang": "yo",
+        "text": "Ṣé LA-11-A12-GN-01 jẹ́ pósíkòdì tó tọ̀nà?",
+        "expected": "validate_postcode",
+        "llm_intent": "validate_postcode",
+        "confidence": 0.75,
+        "llm_status": "ok",
+        "routed_intent": "validate_postcode",
+        "raw_ok": true,
+        "routed_ok": true,
+        "ms": 1917
+      },
+      {
+        "lang": "yo",
+        "text": "báwo ni mo ṣe lè mọ̀ bóyá pósíkòdì mi tọ̀nà",
+        "expected": "validate_postcode",
+        "llm_intent": "validate_postcode",
+        "confidence": 0.9,
+        "llm_status": "ok",
+        "routed_intent": "validate_postcode",
+        "raw_ok": true,
+        "routed_ok": true,
+        "ms": 1914
+      },
+      {
+        "lang": "yo",
+        "text": "Kí ni apá kọ̀ọ̀kan nínú pósíkòdì túmọ̀ sí?",
+        "expected": "explain_postcode",
+        "llm_intent": "explain_postcode",
+        "confidence": 0.8,
+        "llm_status": "ok",
+        "routed_intent": "explain_postcode",
+        "raw_ok": true,
+        "routed_ok": true,
+        "ms": 2028
+      },
+      {
+        "lang": "yo",
+        "text": "ki ni itumo posikodi tuntun yi",
+        "expected": "explain_postcode",
+        "llm_intent": "explain_postcode",
+        "confidence": 0.8,
+        "llm_status": "ok",
+        "routed_intent": "explain_postcode",
+        "raw_ok": true,
+        "routed_ok": true,
+        "ms": 1924
+      },
+      {
+        "lang": "yo",
+        "text": "Ẹ káàsán o",
+        "expected": "greeting",
+        "llm_intent": "greeting",
+        "confidence": 0.8,
+        "llm_status": "ok",
+        "routed_intent": "greeting",
+        "raw_ok": true,
+        "routed_ok": true,
+        "ms": 1946
+      },
+      {
+        "lang": "yo",
+        "text": "e se pupo",
+        "expected": "greeting",
+        "llm_intent": "greeting",
+        "confidence": 0.95,
+        "llm_status": "ok",
+        "routed_intent": "greeting",
+        "raw_ok": true,
+        "routed_ok": true,
+        "ms": 1942
+      },
+      {
+        "lang": "yo",
+        "text": "Níbo ni mo ti lè ra búrẹ́dì?",
+        "expected": "other",
+        "llm_intent": "other",
+        "confidence": 0.8,
+        "llm_status": "ok",
+        "routed_intent": "other",
+        "raw_ok": true,
+        "routed_ok": true,
+        "ms": 1806
+      },
+      {
+        "lang": "yo",
+        "text": "ejo mo fe mo posikodi mi ni ile wa ni oshodi",
+        "expected": "get_my_postcode",
+        "llm_intent": "get_my_postcode",
+        "confidence": 0.95,
+        "llm_status": "ok",
+        "routed_intent": "get_my_postcode",
+        "raw_ok": true,
+        "routed_ok": true,
+        "ms": 2086
+      },
+      {
+        "lang": "ha",
+        "text": "Don Allah, menene postcode na gidana? Ina zaune a Kaduna.",
+        "expected": "get_my_postcode",
+        "llm_intent": "get_my_postcode",
+        "confidence": 0.95,
+        "llm_status": "ok",
+        "routed_intent": "get_my_postcode",
+        "raw_ok": true,
+        "routed_ok": true,
+        "ms": 2357
+      },
+      {
+        "lang": "ha",
+        "text": "ina son sanin postcode na gida na zaria",
+        "expected": "get_my_postcode",
+        "llm_intent": "get_my_postcode",
+        "confidence": 0.9,
+        "llm_status": "ok",
+        "routed_intent": "get_my_postcode",
+        "raw_ok": true,
+        "routed_ok": true,
+        "ms": 2084
+      },
+      {
+        "lang": "ha",
+        "text": "KN-31-F82-WJ-80 postcode ce ingantacciya?",
+        "expected": "validate_postcode",
+        "llm_intent": "validate_postcode",
+        "confidence": 0.75,
+        "llm_status": "ok",
+        "routed_intent": "validate_postcode",
+        "raw_ok": true,
+        "routed_ok": true,
+        "ms": 2009
+      },
+      {
+        "lang": "ha",
+        "text": "ta yaya zan san ko postcode dina daidai ne",
+        "expected": "validate_postcode",
+        "llm_intent": "validate_postcode",
+        "confidence": 0.8,
+        "llm_status": "ok",
+        "routed_intent": "validate_postcode",
+        "raw_ok": true,
+        "routed_ok": true,
+        "ms": 1912
+      },
+      {
+        "lang": "ha",
+        "text": "Menene ma'anar haruffan farko a cikin postcode?",
+        "expected": "explain_postcode",
+        "llm_intent": "explain_postcode",
+        "confidence": 0.8,
+        "llm_status": "ok",
+        "routed_intent": "explain_postcode",
+        "raw_ok": true,
+        "routed_ok": true,
+        "ms": 1907
+      },
+      {
+        "lang": "ha",
+        "text": "mene ne ma ana sassan lamba gidan waya",
+        "expected": "explain_postcode",
+        "llm_intent": "explain_postcode",
+        "confidence": 0.9,
+        "llm_status": "ok",
+        "routed_intent": "explain_postcode",
+        "raw_ok": true,
+        "routed_ok": true,
+        "ms": 1923
+      },
+      {
+        "lang": "ha",
+        "text": "Ina kwana",
+        "expected": "greeting",
+        "llm_intent": "other",
+        "confidence": 0.8,
+        "llm_status": "ok",
+        "routed_intent": "other",
+        "raw_ok": false,
+        "routed_ok": false,
+        "ms": 1819
+      },
+      {
+        "lang": "ha",
+        "text": "na gode sosai",
+        "expected": "greeting",
+        "llm_intent": "greeting",
+        "confidence": 0.95,
+        "llm_status": "ok",
+        "routed_intent": "greeting",
+        "raw_ok": true,
+        "routed_ok": true,
+        "ms": 1857
+      },
+      {
+        "lang": "ha",
+        "text": "Yaushe za a yi ruwan sama?",
+        "expected": "other",
+        "llm_intent": "other",
+        "confidence": 0.8,
+        "llm_status": "ok",
+        "routed_intent": "other",
+        "raw_ok": true,
+        "routed_ok": true,
+        "ms": 1845
+      },
+      {
+        "lang": "ha",
+        "text": "assalamu alaikum ina son lambar gidan waya ta a kano",
+        "expected": "get_my_postcode",
+        "llm_intent": "get_my_postcode",
+        "confidence": 0.95,
+        "llm_status": "ok",
+        "routed_intent": "get_my_postcode",
+        "raw_ok": true,
+        "routed_ok": true,
+        "ms": 2089
+      },
+      {
+        "lang": "ig",
+        "text": "Biko, gịnị bụ postcode ebe m bi? Ana m ebi n'Owerri.",
+        "expected": "get_my_postcode",
+        "llm_intent": "get_my_postcode",
+        "confidence": 0.95,
+        "llm_status": "ok",
+        "routed_intent": "get_my_postcode",
+        "raw_ok": true,
+        "routed_ok": true,
+        "ms": 2293
+      },
+      {
+        "lang": "ig",
+        "text": "achoro m ima postcode ulo m na nsukka",
+        "expected": "get_my_postcode",
+        "llm_intent": "get_my_postcode",
+        "confidence": 0.9,
+        "llm_status": "ok",
+        "routed_intent": "get_my_postcode",
+        "raw_ok": true,
+        "routed_ok": true,
+        "ms": 2146
+      },
+      {
+        "lang": "ig",
+        "text": "EN-04-C21-KD-15 ọ bụ postcode ziri ezi?",
+        "expected": "validate_postcode",
+        "llm_intent": "validate_postcode",
+        "confidence": 0.75,
+        "llm_status": "ok",
+        "routed_intent": "validate_postcode",
+        "raw_ok": true,
+        "routed_ok": true,
+        "ms": 1904
+      },
+      {
+        "lang": "ig",
+        "text": "kedu ka m ga-esi mara ma postcode m ziri ezi",
+        "expected": "validate_postcode",
+        "llm_intent": "validate_postcode",
+        "confidence": 0.8,
+        "llm_status": "ok",
+        "routed_intent": "validate_postcode",
+        "raw_ok": true,
+        "routed_ok": true,
+        "ms": 1911
+      },
+      {
+        "lang": "ig",
+        "text": "Gịnị ka akụkụ ọ bụla nke postcode pụtara?",
+        "expected": "explain_postcode",
+        "llm_intent": "explain_postcode",
+        "confidence": 0.9,
+        "llm_status": "ok",
+        "routed_intent": "explain_postcode",
+        "raw_ok": true,
+        "routed_ok": true,
+        "ms": 1915
+      },
+      {
+        "lang": "ig",
+        "text": "gini bu postcode ohuru a",
+        "expected": "explain_postcode",
+        "llm_intent": "get_my_postcode",
+        "confidence": 0.95,
+        "llm_status": "ok",
+        "routed_intent": "get_my_postcode",
+        "raw_ok": false,
+        "routed_ok": false,
+        "ms": 2137
+      },
+      {
+        "lang": "ig",
+        "text": "Ụtụtụ ọma",
+        "expected": "greeting",
+        "llm_intent": "greeting",
+        "confidence": 0.95,
+        "llm_status": "ok",
+        "routed_intent": "greeting",
+        "raw_ok": true,
+        "routed_ok": true,
+        "ms": 1887
+      },
+      {
+        "lang": "ig",
+        "text": "daalu nke ukwu",
+        "expected": "greeting",
+        "llm_intent": "other",
+        "confidence": 0.8,
+        "llm_status": "ok",
+        "routed_intent": "other",
+        "raw_ok": false,
+        "routed_ok": false,
+        "ms": 1789
+      },
+      {
+        "lang": "ig",
+        "text": "Ebee ka m ga-azụta akwụkwọ nri?",
+        "expected": "other",
+        "llm_intent": "other",
+        "confidence": 0.8,
+        "llm_status": "ok",
+        "routed_intent": "other",
+        "raw_ok": true,
+        "routed_ok": true,
+        "ms": 1897
+      },
+      {
+        "lang": "ig",
+        "text": "nno biko enyere m aka ichota postcode m",
+        "expected": "get_my_postcode",
+        "llm_intent": "get_my_postcode",
+        "confidence": 0.95,
+        "llm_status": "ok",
+        "routed_intent": "get_my_postcode",
+        "raw_ok": true,
+        "routed_ok": true,
+        "ms": 1983
+      }
+    ],
+    "summary": {
+      "en": {
+        "n": 10,
+        "raw_accuracy": 1.0,
+        "routed_accuracy": 1.0,
+        "llm_errors": 0
+      },
+      "yo": {
+        "n": 10,
+        "raw_accuracy": 1.0,
+        "routed_accuracy": 1.0,
+        "llm_errors": 0
+      },
+      "ha": {
+        "n": 10,
+        "raw_accuracy": 0.9,
+        "routed_accuracy": 0.9,
+        "llm_errors": 0
+      },
+      "ig": {
+        "n": 10,
+        "raw_accuracy": 0.8,
+        "routed_accuracy": 0.8,
+        "llm_errors": 0
+      },
+      "all": {
+        "n": 40,
+        "raw_accuracy": 0.925,
+        "routed_accuracy": 0.925,
+        "llm_errors": 0
+      }
+    }
+  },
+  "intent_latency": {
+    "n": 40,
+    "p50_ms": 1917,
+    "p95_ms": 2357,
+    "max_ms": 4254
+  },
+  "explain": {
+    "rows": [
+      {
+        "lang": "en",
+        "question": "What does each part of a postcode mean?",
+        "answer": "Each part of Nigeria's new postcode represents different levels of geographical detail:\n- AA: State\n- 99: Local Government Area (LGA)\n- H77: District\n- BB: Area\n- 55: Unit",
+        "llm_status": "ok",
+        "guard_reason": null,
+        "guard_pass": true,
+        "words": 30,
+        "ms": 7131
+      },
+      {
+        "lang": "en",
+        "question": "Can you tell me my postcode if I tell you my street name?",
+        "answer": "I'm sorry, but without knowing the specific street name or exact location, I can't provide your postcode. To find out your postcode, please share your location using our \"share your location\" feature, and we'll be happy to help.",
+        "llm_status": "ok",
+        "guard_reason": null,
+        "guard_pass": true,
+        "words": 38,
+        "ms": 3584
+      },
+      {
+        "lang": "en",
+        "question": "Since when do we have these new postcodes?",
+        "answer": "Nigeria's new postcodes have been live since 1 October 2026. They consist of five parts: state (AA), Local Government Area (99), district (H77), area (BB), and unit (55). To find your postcode, share your location, and we'll look up the correct one. We can't provide a postcode based on a place name alone; please share your location instead.",
+        "llm_status": "ok",
+        "guard_reason": null,
+        "guard_pass": true,
+        "words": 58,
+        "ms": 5565
+      },
+      {
+        "lang": "yo",
+        "question": "Kí ni apá kọ̀ọ̀kan pósíkòdì túmọ̀ sí?",
+        "answer": "Apá kọ̀ọ̀kan pósíkòdì túmọ̀ sí:\n- Apá ìpínlẹ̀: Àpá àkọ́kọ́ náà dúró fún ìpínlẹ̀.\n- Apá ìjọba ìbílẹ̀: Apá keji tọ́ka sí ìjọba ìbílẹ̀.\n- Apá ẹkùn: Apá kẹta duro fun agbegbe naa.\n- Apá àdúgbò: Apá mẹrin duro fun agbegbe naa.\n- Apá ẹ̀ka ilé: Apá karun-un tọ́ka sí ẹ̀ka ilé.",
+        "llm_status": "ok",
+        "guard_reason": null,
+        "guard_pass": true,
+        "words": 52,
+        "ms": 10412
+      },
+      {
+        "lang": "yo",
+        "question": "Ṣé ẹ lè fún mi ní pósíkòdì mi tí mo bá sọ orúkọ òpópónà mi?",
+        "answer": "Dájúdájú! Lati wa pósíkòdì rẹ, o gbọdọ kọkọ fun mi ni adirẹsi gangan tabi ipo ti opopona rẹ. Emi yoo lo alaye yii lati pinnu pósíkòdì to pe fun agbegbe rẹ. Ranti, laisi adirẹsi gangan, ko ṣee ṣe lati pese pósíkòdì naa.",
+        "llm_status": "ok",
+        "guard_reason": null,
+        "guard_pass": true,
+        "words": 42,
+        "ms": 7268
+      },
+      {
+        "lang": "yo",
+        "question": "Ìgbà wo ni pósíkòdì tuntun yìí bẹ̀rẹ̀?",
+        "answer": "Igbesẹ tuntun ti pósíkòdì Nàìjíríà bẹ̀rẹ̀ sí í ṣiṣẹ́ láti 1 October 2026.",
+        "llm_status": "ok",
+        "guard_reason": null,
+        "guard_pass": true,
+        "words": 13,
+        "ms": 3379
+      },
+      {
+        "lang": "ha",
+        "question": "Menene ma'anar kowane sashe na postcode?",
+        "answer": "Kowane bangare na lambar gidan waya yana da takamaiman manufa:\n- Jiha: Yana wakiltar yanki na farko (misali, AA)\n- LGA: Karamar hukumar gwamnati (misali, 99)\n- Gundumomi: Wani yanki mafi girma cikin LGA (misali, H77)\n- Unguwa: Wani yanki mafi girma cikin gundumomi (misali, BB)\n- Rukunin ginin: Wani yanki a cikin unguwannin (misali, 55)\n\nWadannan sassan suna haifar da lambar gidan waya mai lamba 5 don tantance adireshin musamman.",
+        "llm_status": "ok",
+        "guard_reason": "number_not_in_facts",
+        "guard_pass": false,
+        "words": 71,
+        "ms": 11091
+      },
+      {
+        "lang": "ha",
+        "question": "Za ku iya ba ni postcode dina idan na faɗi sunan titina?",
+        "answer": "Ina fata za ku yi amfani da sabon fasalin \"Wurinku\" don samun lambar yankinku. Da zarar kun raba wurin, zan iya taimakawa muku da lambar yanki mai dacewa.",
+        "llm_status": "ok",
+        "guard_reason": null,
+        "guard_pass": true,
+        "words": 28,
+        "ms": 4153
+      },
+      {
+        "lang": "ha",
+        "question": "Tun yaushe aka fara amfani da sabbin postcode?",
+        "answer": "An fara amfani da sabon lambar gidan waya a ranar 1 ga Oktoba, 2026. Lambar tana da sassa biyar: AA don jihar, 99 don kananan hukumomi, H77 don gundumar, BB don unguwanni, da 55 don rarrabawa. Misali, LA-11-A12-GN-01 yana nufin Legas, Kudu, Gundumar Ikoyi-Obalende, Unguwar Obalende, Rukuni na 1.",
+        "llm_status": "ok",
+        "guard_reason": "place_not_in_facts",
+        "guard_pass": false,
+        "words": 49,
+        "ms": 7985
+      },
+      {
+        "lang": "ig",
+        "question": "Gịnị ka akụkụ ọ bụla nke postcode pụtara?",
+        "answer": "Akụkụ ọ bụla nke koodu nzipu ozi nke Naijiria na-anọchi anya ọnọdụ dị iche iche:\n- AA bụ steeti.\n- 99 bụ ọchịchị ime obodo (LGA).\n- H77 bụ mpaghara (mpaghara).\n- BB bụ obodo nta (mpaghara).\n- 55 bụ otu ụlọ (otu).",
+        "llm_status": "ok",
+        "guard_reason": null,
+        "guard_pass": true,
+        "words": 43,
+        "ms": 6652
+      },
+      {
+        "lang": "ig",
+        "question": "Ị nwere ike inye m postcode m ma m gwa gị aha okporo ụzọ m?",
+        "answer": "Iji nweta koodu zipu gị, biko zipu ebe ị nọ, m ga-enyere gị aka ịchọta koodu zipu maka ebe ahụ.",
+        "llm_status": "ok",
+        "guard_reason": null,
+        "guard_pass": true,
+        "words": 20,
+        "ms": 3336
+      },
+      {
+        "lang": "ig",
+        "question": "Kemgbe ole ka postcode ọhụrụ ndị a malitere?",
+        "answer": "A maliteghachiri koodu ọhụrụ nke Naịjirịa kemgbe ọnwa Oṅtẹ 1, 2026. Koodu ọhụrụ ahụ nwere akụkụ ise: steeti, ọchịchị ime obodo, mpaghara, obodo nta, na otu ụlọ. Dịka ọmụmaatụ, maka \"LA-11-A12-GN-01,\" LA bụ steeti, 11 bụ ọchịchị ime obodo, A12 bụ mpaghara, GN bụ obodo nta, na 01 bụ otu ụlọ.",
+        "llm_status": "ok",
+        "guard_reason": null,
+        "guard_pass": true,
+        "words": 51,
+        "ms": 9777
+      }
+    ],
+    "summary": {
+      "n": 12,
+      "guard_pass": 10,
+      "guard_pass_rate": 0.833
+    }
+  },
+  "explain_latency": {
+    "n": 12,
+    "p50_ms": 6652,
+    "p95_ms": 11091,
+    "max_ms": 11091
+  }
+}

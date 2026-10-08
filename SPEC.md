@@ -185,12 +185,19 @@ Example expected output for a location in Ikeja (en):
 
 ### 3.4 LLM: intent
 
-- Endpoint: `POST {NATLAS_URL}/v1/chat/completions`, model `natlas`, `temperature: 0`, `max_tokens: 80`,
-  `repetition_penalty: 1.12`, `response_format: json_schema`.
+- Endpoint: `POST {NATLAS_URL}/v1/chat/completions` (`Authorization: Bearer NATLAS_API_KEY`), model
+  `natlas`, `temperature: 0`, `max_tokens: 80`, `repetition_penalty: 1.12`, `response_format: json_schema`.
+  Prompt: system prompt naming the user's language + 12 few-shot pairs (3 per language, one noisy ASR
+  transcript each) in `app/services/prompts.py`.
+- Timeout per LLM call: 150 s read, 10 s connect, **no retry inside a user turn**. The first call of a turn
+  absorbs a cold start; a second call in the same turn is warm, so a cold turn still fits the 180 s budget.
 - Output (always schema-valid):
 ```json
-{"intent":"get_my_postcode","places_mentioned":["Ibeju-Lekki","Lagos"]}
+{"intent":"get_my_postcode","confidence":0.92,"places_mentioned":["Ibeju-Lekki","Lagos"]}
 ```
+- `confidence` ∈ [0, 1]; below **0.5** the orchestrator treats the intent as `other` (then the net).
+  `places_mentioned` is never used as a fact. Unparseable or off-schema output → `LlmError("bad_json")`;
+  timeout → `timeout`; HTTP/transport errors → `error` (logged as `llm_status`).
 - `intent` ∈ `get_my_postcode | validate_postcode | explain_postcode | greeting | other`.
 - Order: (1) a postcode is found in the text (see below) → `lookup` directly, **the LLM is not called**;
   (2) otherwise classify; if the LLM fails or times out, treat the intent as `other`;
@@ -198,12 +205,13 @@ Example expected output for a location in Ikeja (en):
   (`valid|correct|check|real|confirm|tona|sayewo|daidai|ingantacciya|duba|ziri ezi|lelee`) →
   `validate_postcode`, else a postcode word (`postcode|post code|posikodi|koodu|lamba|adiresi|address`) →
   `get_my_postcode`; (4) still `other` → menu. `validate_postcode` with no code in the text → `ask_code`.
+  Steps (1)–(3) are one pure function, `app.orchestrator.resolve_intent`, which the evals import.
 - Postcode search (in `app/services/postcode.py`, `find_postcode(text)`): case-insensitive, **unanchored**,
   segments separated by `-`, spaces or nothing:
   `\b([A-Z]{2})[\s-]?(\d{2})[\s-]?([A-Z0-9]{3})[\s-]?([A-Z]{2})[\s-]?(\d{2})\b`. Matches are normalised
   to upper case with hyphens (`la 11 a12 gn 01` → `LA-11-A12-GN-01`).
-- Acceptance: ≥ 4/5 on `evals/natlas_final_test.py intent` at `temperature: 0`, with held-out eval inputs;
-  100% schema-valid; warm latency ≤ 3 s.
+- Acceptance: on `evals/natlas_final_test.py` (40 held-out cases, 10 per language, `evals/cases.py`),
+  routed intent accuracy (after regex + safety net) **≥ 85% overall**; 100% schema-valid; warm p50 ≤ 3 s.
 
 ### 3.5 LLM: reply (only for `explain_postcode` and the wording around a verified result)
 
@@ -211,8 +219,15 @@ Example expected output for a location in Ikeja (en):
   facts under `FACTS (use only these)` in the user turn.
 - Expected output: ≤ 80 words, in the requested language, no URLs, no numbers or place names that are not
   in FACTS. If a postcode is in FACTS, the reply contains it character for character.
-- Guard: if the reply contains a URL, a postcode not in FACTS, or is > 120 words, discard it and send the
-  template answer instead. Log `reply_kind = "template_fallback"`.
+- FACTS = `data/fact_sheet_<lang>.md` without its `review:` front matter. Allowed content only: the format
+  AA-99-H77-BB-55 and its parts, the example LA-11-A12-GN-01, live since 1 Oct 2026, get = share location,
+  check = say or type it, no postcode from a place name alone. yo/ha/ig sheets are reviewed through the same
+  CSV flow (row key `fact_sheet`); `review: done` is a pilot gate.
+- Guard (`app.services.llm.guard`): discard the reply if it has a URL or domain, a postcode not in FACTS,
+  more than 120 words, a number not in FACTS, a Nigerian place name not in FACTS, or (yo/ha/ig) more than
+  30% common English words. The orchestrator then sends the `explain_fallback` template and logs
+  `reply_kind = "template_fallback"`. The orchestrator re-checks URLs and postcodes (second guard).
+- Acceptance: no invented postcode or place name in any explain answer in the evals.
 
 ### 3.6 Postcode client
 
@@ -353,6 +368,9 @@ The Twilio echo prototype is kept in `archive/twillo_echo.py`.
 - 2026-10-08: Onboarding order language → consent → knew_before; new `POST /api/consent`; `/api/language`
   returns the welcome. PII scrub + 300-char cap on stored text. `llm_status` added to the log schema.
   Anonymous daily decline counter. `ask_code` shows location button and text box. Template keys frozen.
+- 2026-10-08: LLM contracts: intent schema adds `confidence` (< 0.5 → other); 150 s per-call timeout, no
+  retry; fact sheet content rules; guard rules (URL, postcode, number, place, length, wrong language).
+  Eval acceptance: ≥ 85% routed intent accuracy on 40 held-out cases.
 - 2026-10-08: Web page contract: match `web/design/prototype.html` exactly (phone screen only). Glyph
   coverage table and unicode-range fallback rule. Open question on font transfer size vs the 50 KB budget.
   30-minute TTL for unconsented sessions (implemented in `main.py`).

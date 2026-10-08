@@ -7,7 +7,7 @@ from typing import Any
 import pytest
 
 from app.events import Event, Lang
-from app.orchestrator import Orchestrator, load_templates, safety_net
+from app.orchestrator import Orchestrator, load_templates, resolve_intent, safety_net
 from app.services.interfaces import AsrError, IntentResult, LlmError
 from app.services.postcode import LookupResult, PostcodeError, ReverseResult, load_states
 from app.store import MemoryDeclineCounter, MemoryLog, MemorySessionStore, Session, hash_user
@@ -602,3 +602,47 @@ def test_voice_transcript_is_scrubbed_and_capped() -> None:
     row = h.last_row
     assert "[PHONE]" in row["transcript"] and "2348031234567" not in row["transcript"]
     assert len(row["transcript"]) == 300
+
+
+# ---------------------------------------------------------------- intent resolution
+
+
+class ConfidentIntent(FakeIntent):
+    def __init__(self, intent: str, confidence: float) -> None:
+        super().__init__(intent)
+        self._confidence = confidence
+
+    async def classify(self, text: str, lang: Lang) -> IntentResult:
+        return IntentResult(self._intent, confidence=self._confidence)  # type: ignore[arg-type]
+
+
+def test_low_confidence_intent_goes_through_the_safety_net() -> None:
+    h = ready("en", intent=ConfidentIntent("explain_postcode", 0.3))
+    reply = h.send("text", "my postcode please")  # net: postcode word -> get_my_postcode
+    assert reply.kind == "ask_location"
+    assert h.reply.calls == []
+
+
+def test_confident_intent_is_used() -> None:
+    h = ready("en", intent=ConfidentIntent("explain_postcode", 0.8))
+    assert h.send("text", "my postcode please").kind == "answer"
+
+
+@pytest.mark.parametrize(
+    ("text", "result", "expected"),
+    [
+        ("is LA 11 A12 GN 01 ok", IntentResult("greeting", 0.99), "validate_postcode"),
+        ("hello", None, "other"),
+        ("posikodi mi", None, "get_my_postcode"),
+        ("hello", IntentResult("greeting", 0.9), "greeting"),
+        ("is it correct", IntentResult("other", 0.9), "validate_postcode"),
+    ],
+)
+def test_resolve_intent(text: str, result: IntentResult | None, expected: str) -> None:
+    assert resolve_intent(text, result) == expected
+
+
+def test_explain_answer_may_show_the_format_pattern() -> None:
+    answer = "A postcode looks like AA-99-H77-BB-55, for example LA-11-A12-GN-01."
+    h = ready("en", intent=FakeIntent("explain_postcode"), reply=FakeReply(answer))
+    assert h.send("text", "what is the format").text.startswith(answer)

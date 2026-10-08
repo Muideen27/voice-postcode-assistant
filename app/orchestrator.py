@@ -19,12 +19,14 @@ from app.services.interfaces import (
     AsrError,
     AsrService,
     Intent,
+    IntentResult,
     IntentService,
     LlmError,
     PostcodeService,
     ReplyService,
 )
 from app.services.postcode import POSTCODE_RE, PostcodeError, display, find_postcode, normalise, segments
+from app.services.prompts import LOW_CONFIDENCE
 from app.store import (
     DeclineCounter,
     Feedback,
@@ -56,7 +58,8 @@ _VALIDATE_RE = re.compile(
 )
 _POSTCODE_RE = re.compile(r"\b(?:postcode|post code|posikodi|koodu|lamba|adiresi|address)")
 _URL_RE = re.compile(r"https?://|www\.", re.IGNORECASE)
-EXAMPLE_POSTCODE = "LA-11-A12-GN-01"  # the only code the templates and fact sheets use as an example
+# The only codes the templates and fact sheets show: the format pattern and the one example.
+EXAMPLE_CODES = {"AA-99-H77-BB-55", "LA-11-A12-GN-01"}
 
 POSTCODE_ERROR_TEMPLATES = {
     "timeout": "error_slow",
@@ -98,6 +101,17 @@ def safety_net(text: str) -> Intent:
     if _POSTCODE_RE.search(folded):
         return "get_my_postcode"
     return "other"
+
+
+def resolve_intent(text: str, result: IntentResult | None) -> Intent:
+    """Final routing intent. Order: postcode in text -> validate; LLM result (None = LLM failed, or low
+    confidence) -> "other"; "other" -> keyword safety net. Shared with evals so nothing is copied."""
+    if find_postcode(text):
+        return "validate_postcode"
+    intent: Intent = "other"
+    if result is not None and (result.confidence is None or result.confidence >= LOW_CONFIDENCE):
+        intent = result.intent
+    return safety_net(text) if intent == "other" else intent
 
 
 def log_event(event: str, **fields: Any) -> None:
@@ -305,19 +319,18 @@ class Orchestrator:
             return await self._validate(code, s, turn, lang)
 
         start = time.perf_counter()
+        result: IntentResult | None = None
         try:
-            intent: Intent = (await self.intent.classify(text, lang)).intent
+            result = await self.intent.classify(text, lang)
             turn.llm_status = "ok"
         except Exception as exc:  # LLM down or cold: fall back to keywords, never fail the turn
             turn.llm_status = _llm_status(exc)
             log_event("llm_error", stage="intent", status=turn.llm_status, error=type(exc).__name__)
-            intent = "other"
         finally:
             turn.latency.llm = _ms(start)
-        if intent == "other":
-            intent = safety_net(text)
-        # The log keeps what the LLM said; on LLM failure that is "other" (llm_status says why).
-        turn.intent = "other" if turn.llm_status != "ok" else intent
+        intent = resolve_intent(text, result)
+        # The log keeps the routed intent; on LLM failure it is "other" (llm_status says why).
+        turn.intent = "other" if result is None else intent
 
         if intent == "get_my_postcode":
             return Reply(kind="ask_location", lang=lang, text=self._t(lang, "ask_location"))
@@ -459,10 +472,10 @@ def _seg_lines(segs: list[tuple[str, str]]) -> list[str]:
 
 
 def _safe_answer(answer: str | None) -> bool:
-    """Second guard on LLM text (llm.py has the first): no URLs, no postcode except the documented example."""
+    """Second guard on LLM text (llm.py has the first): no URLs, no postcode except the documented examples."""
     if not answer or not answer.strip():
         return False
     if _URL_RE.search(answer):
         return False
     codes = {normalise(m.group(0)) for m in POSTCODE_RE.finditer(answer)}
-    return codes <= {EXAMPLE_POSTCODE}
+    return codes <= EXAMPLE_CODES

@@ -11,20 +11,37 @@ are reported and left unchanged. Exit code 1 if any row was rejected. Then run `
 
 import csv
 import json
+import re
 import string
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 TEMPLATES = ROOT / "app" / "templates"
+DATA = ROOT / "data"
 REVIEW = ROOT / "docs" / "review"
+FACT_SHEET_KEY = "fact_sheet"
+# Codes, dates and numbers in a fact sheet must survive review unchanged (nothing added, nothing lost).
+_TOKEN_RE = re.compile(r"[A-Z]{2}-\d{2}-[A-Z0-9]{3}-[A-Z]{2}-\d{2}|\d+")
 
 
 def placeholders(text: str) -> set[str]:
     return {name for _, name, _, _ in string.Formatter().parse(text) if name}
 
 
-def apply_review(lang: str, csv_path: Path, templates_dir: Path = TEMPLATES) -> tuple[list[str], list[str]]:
+def apply_fact_sheet(lang: str, text: str, data_dir: Path) -> str | None:
+    """Write a reviewed fact sheet and mark it done. Returns an error message instead if codes/numbers changed."""
+    path = data_dir / f"fact_sheet_{lang}.md"
+    draft_body = path.read_text(encoding="utf-8").split("---\n", 2)[2]
+    if sorted(_TOKEN_RE.findall(text)) != sorted(_TOKEN_RE.findall(draft_body)):
+        return "codes or numbers differ from the draft; keep AA-99-H77-BB-55, LA-11-A12-GN-01 and the date"
+    path.write_text(f"---\nreview: done\n---\n{text.strip()}\n", encoding="utf-8")
+    return None
+
+
+def apply_review(
+    lang: str, csv_path: Path, templates_dir: Path = TEMPLATES, data_dir: Path = DATA
+) -> tuple[list[str], list[str]]:
     """Returns (applied keys, error messages)."""
     en = json.loads((templates_dir / "en.json").read_text(encoding="utf-8"))
     target = templates_dir / f"{lang}.json"
@@ -37,6 +54,13 @@ def apply_review(lang: str, csv_path: Path, templates_dir: Path = TEMPLATES) -> 
             key = (row.get("key") or "").strip()
             text = (row.get("reviewer_text") or "").strip()
             if not text:
+                continue
+            if key == FACT_SHEET_KEY:
+                error = apply_fact_sheet(lang, text, data_dir)
+                if error:
+                    errors.append(f"line {line} ({key}): {error}")
+                else:
+                    applied.append(key)
                 continue
             if key.startswith("_") or key not in en or key not in data:
                 errors.append(f"line {line}: unknown key {key!r}")
@@ -53,7 +77,7 @@ def apply_review(lang: str, csv_path: Path, templates_dir: Path = TEMPLATES) -> 
             data[key] = text
             applied.append(key)
 
-    data["_todo_review"] = [k for k in data["_todo_review"] if k not in applied]
+    data["_todo_review"] = [k for k in data["_todo_review"] if k not in applied]  # fact_sheet is never listed
     target.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     return applied, errors
 

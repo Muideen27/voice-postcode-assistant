@@ -42,3 +42,40 @@ feedback_no,No,A'a,,Button label: keep it short.
 thanks,Thank you for your feedback!,Na gode da ra'ayinka!,,
 decline_button,"No, thanks","A'a, na gode",,Button label: keep it short.
 ask_code,"Say or type the postcode you want to check, or tap ""Get my postcode"" to share your location and find your postcode.","Faɗi ko rubuta postcode da kake so a duba, ko ka danna ""Samo postcode ɗina"" don aika wurinka ka sami postcode ɗinka.",,A quoted button name must match that button's text in your language (btn_* rows).
+fact_sheet,"# Your new postcode
+
+Nigeria's new postcodes have been live since 1 October 2026.
+
+A postcode has five parts and is written like this: AA-99-H77-BB-55.
+
+- AA is the state.
+- 99 is the Local Government Area (LGA).
+- H77 is the district.
+- BB is the area.
+- 55 is the unit.
+
+Example: LA-11-A12-GN-01. Here LA is the state, 11 is the Local Government Area, A12 is the district, GN is the area and 01 is the unit.
+
+How to get your postcode here: share your location, and we look up the postcode for where you are.
+
+How to check a postcode here: say it or type it, and we tell you if it is valid.
+
+We cannot give your postcode from a place name alone. Please share your location instead.","# Sabuwar postcode ɗinka
+
+Sabbin postcode na Najeriya sun fara aiki tun daga 1 ga Oktoba 2026.
+
+Postcode tana da sassa biyar, kuma ana rubuta ta kamar haka: AA-99-H77-BB-55.
+
+- AA ita ce jiha.
+- 99 ita ce karamar hukuma (LGA).
+- H77 ita ce gunduma (district).
+- BB ita ce unguwa (area).
+- 55 shi ne rukunin gini (unit).
+
+Misali: LA-11-A12-GN-01. A nan, LA ita ce jiha, 11 karamar hukuma, A12 gunduma, GN unguwa, 01 kuma rukunin gini.
+
+Yadda za ka sami postcode ɗinka a nan: aika wurinka, mu nemo postcode na inda kake.
+
+Yadda za ka duba postcode a nan: faɗe ta ko ka rubuta ta, mu gaya maka ko ingantacciya ce.
+
+Ba za mu iya ba ka postcode ɗinka daga sunan wuri kawai ba. Don Allah ka aika wurinka.",,"The facts the assistant may use when explaining postcodes. Keep the Markdown (# and - lines), every code (AA-99-H77-BB-55, LA-11-A12-GN-01) and the date exactly. Add no new facts or numbers."
