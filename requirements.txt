@@ -11,8 +11,8 @@ torch==2.14.1
 transformers==5.18.0
 huggingface_hub==1.33.0
 accelerate==1.15.0
-librosa
-soundfile
+librosa==1.0.0
+soundfile==0.14.0
 # Dev only
-pytest
-ruff
+pytest==9.1.1
+ruff==0.16.10
