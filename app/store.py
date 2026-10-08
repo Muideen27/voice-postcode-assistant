@@ -39,12 +39,17 @@ def now_wat() -> str:
 # ---------------------------------------------------------------- sessions
 
 
+Stage = Literal["new", "consent", "knew_before", "ready"]
+LlmStatus = Literal["ok", "timeout", "error", "bad_json"]
+
+
 @dataclass
 class Session:
+    # new (language menu) -> consent -> knew_before -> ready. knew_before is passed once per user.
+    # A "new" session is never stored: it exists only until a language is chosen.
+    stage: Stage = "new"
     lang: Lang | None = None
-    consented: bool = False
-    knew_before_asked: bool = False  # asked once, right after the language choice
-    awaiting: Literal["knew_before", "feedback"] | None = None  # what the next tap/digit answers
+    awaiting_feedback: bool = False  # a bare "1"/"2" typed now answers "Did this help?"
     turns: int = 0
 
     @classmethod
@@ -56,6 +61,7 @@ class Session:
 class SessionStore(Protocol):
     async def get(self, user_hash: str) -> Session: ...
     async def put(self, user_hash: str, session: Session) -> None: ...
+    async def delete(self, user_hash: str) -> None: ...
 
 
 class MemorySessionStore:
@@ -70,6 +76,9 @@ class MemorySessionStore:
     async def put(self, user_hash: str, session: Session) -> None:
         self.data[user_hash] = asdict(session)
 
+    async def delete(self, user_hash: str) -> None:
+        self.data.pop(user_hash, None)
+
 
 class ModalDictSessionStore:
     """Sessions in a `modal.Dict`, shared by all containers. Values are plain dicts, not pickled classes."""
@@ -82,6 +91,12 @@ class ModalDictSessionStore:
 
     async def put(self, user_hash: str, session: Session) -> None:
         await self._dict.put.aio(user_hash, asdict(session))
+
+    async def delete(self, user_hash: str) -> None:
+        try:
+            await self._dict.pop.aio(user_hash)
+        except KeyError:
+            pass
 
 
 # ---------------------------------------------------------------- interaction log
@@ -106,6 +121,7 @@ class LogRow:
     channel: Channel = "web"
     transcript: str | None = None
     intent: str | None = None
+    llm_status: LlmStatus | None = None  # None when the LLM was not called this turn
     postcode_found: bool | None = None
     api_status: str | None = None
     latency_ms: Latency = field(default_factory=Latency)
@@ -131,6 +147,7 @@ SCHEMA_FIELDS = (
     "input",
     "transcript",
     "intent",
+    "llm_status",
     "postcode_found",
     "api_status",
     "latency_ms",
@@ -179,3 +196,38 @@ class JsonlLog:
             f.write(row.to_json() + "\n")
         if self._commit is not None:
             await self._commit()
+
+
+# ---------------------------------------------------------------- anonymous decline counter
+
+
+class DeclineCounter(Protocol):
+    """Counts declined consents per WAT day. No hash, session or text: just (date, declines)."""
+
+    async def increment(self) -> None: ...
+
+
+def today_wat() -> str:
+    return datetime.now(WAT).date().isoformat()
+
+
+class MemoryDeclineCounter:
+    def __init__(self) -> None:
+        self.counts: dict[str, int] = {}
+
+    async def increment(self) -> None:
+        day = today_wat()
+        self.counts[day] = self.counts.get(day, 0) + 1
+
+
+class ModalDictDeclineCounter:
+    """Counts in their own `modal.Dict`, keyed "YYYY-MM-DD". Read-then-write: a rare lost increment
+    under concurrent declines is acceptable for a summary statistic."""
+
+    def __init__(self, modal_dict: Any) -> None:
+        self._dict = modal_dict
+
+    async def increment(self) -> None:
+        day = today_wat()
+        current = await self._dict.get.aio(day) or 0
+        await self._dict.put.aio(day, int(current) + 1)

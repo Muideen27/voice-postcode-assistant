@@ -59,16 +59,19 @@ One core, thin channel. All logic lives in the orchestrator; the channel only tr
 
 ### Conversation flow
 
-1. **New user** -> welcome + consent + language menu (1 Yorùbá, 2 Hausa, 3 Igbo, 4 English).
-   Right after the language choice, and **before any postcode is shown**, ask once per user:
+1. **New user** -> language menu: each language named in itself (1 Yorùbá, 2 Hausa, 3 Igbo,
+   4 English) with the N-ATLaS attribution below, nothing else. Nothing is stored until one is chosen.
+   -> welcome + consent in the chosen language. Decline -> `declined` template, session deleted, only an
+   anonymous daily decline count is kept. Agree -> once per user, **before any postcode is shown**:
    "Did you know your new postcode before today?" (yes / no / skip) -> `knew_postcode_before`
-   (skip -> null). Asking after a result would bias the answer.
+   (skip -> null). Asking after a result would bias the answer. -> menu.
 2. **Location** (browser geolocation) -> `reverse` -> template reply (code + each segment explained)
    -> feedback.
 3. **Voice note** -> ASR (chosen language) -> same path as text.
 4. **Text** -> LLM intent JSON (+ postcode regex and keyword safety net) ->
    - `get_my_postcode` -> ask for location (place names alone cannot give a building code at L1)
-   - `validate_postcode` -> regex-extract and normalise code -> `lookup(level=1)` -> valid / not found
+   - `validate_postcode` -> regex-extract and normalise code -> `lookup(level=1)` -> valid / not found;
+     no code in the text -> `ask_code` (offers both: send the code, or share location)
    - `explain_postcode` -> LLM answers from `data/fact_sheet_<lang>.md` only
    - `greeting` / `other` / low confidence -> show menu again
 5. **Feedback** (1 = helpful, 2 = not) -> interaction log.
@@ -84,17 +87,21 @@ Status: (exists) = working file today, (planned) = to be written.
 ```
 app/
   main.py              (planned) Modal app: FastAPI web endpoint + orchestrator wiring
-  orchestrator.py      (planned) state machine, routing, reply assembly
+  orchestrator.py      (exists) state machine, routing, reply assembly, keyword safety net
   events.py            (exists) Event and Reply dataclasses
   channels/
     web.py             (planned) serves web/index.html, POST /api/language|voice|location|text|feedback
   services/
+    interfaces.py      (exists) Protocols for intent/reply/ASR/postcode services + IntentResult, AsrError,
+                       LlmError
     asr.py             (planned) Modal GPU class, loads 4 ASR models once
     llm.py             (planned) client for the vLLM endpoint (intent + reply)
     prompts.py         (planned) all LLM prompt text
     postcode.py        (exists) reverse, lookup, segments, postcode regex/normalise
   templates/           (exists) reply strings per language: en.json, yo.json, ha.json, ig.json
-  store.py             (exists) user hashing, sessions (Modal Dict), interaction log (Volume, JSONL)
+  store.py             (exists) user hashing, sessions (Modal Dict), interaction log (Volume, JSONL),
+                       anonymous daily decline counter (Modal Dict)
+  privacy.py           (exists) scrub()/for_storage(): PII removed + 300-char cap before storing text
 data/
   states.json          (exists) state codes -> names, documented codes only (11 so far)
   fact_sheet_<lang>.md (planned) facts the LLM may use for explain_postcode
@@ -104,9 +111,11 @@ deploy/
 tests/                 unit tests only: no network, run by `pytest -q`
   test_postcode.py     (exists) API client tests with recorded responses
   fixtures/postcode/   (exists) API response bodies; see its README for which are live
-  test_orchestrator.py (planned) state machine tests with fake services
+  test_orchestrator.py (exists) state machine tests with fake services
   test_templates.py    (exists) same keys/placeholders in all languages, attribution verbatim
   test_store.py        (exists) hashing, sessions, log schema and privacy
+  test_privacy.py      (exists) NIN, phone, email scrubbing; postcodes survive
+  test_review_scripts.py (exists) review sheet round trip
 evals/                 live-model checks (need GPU/network), never collected by pytest
   natlas_final_test.py (exists) intent + grounded-reply evals (laptop or Modal)
   test_natlas_asr.py   (exists) ASR access check + transcription
@@ -114,9 +123,12 @@ evals/                 live-model checks (need GPU/network), never collected by 
 scripts/
   export_log.py        (planned) interaction log -> CSV/PDF evidence
   record_postcode_fixtures.py (exists) refresh tests/fixtures/postcode from the live API
+  review_sheet.py      (exists) templates -> docs/review/<lang>.csv for native-speaker review
+  apply_review.py      (exists) filled docs/review/<lang>.csv -> templates, clears _todo_review
 archive/
   twillo_echo.py       (archived) Twilio WhatsApp echo prototype, see Future work
 docs/                  submission PDFs (integration evidence, validation, technical docs, team)
+  review/<lang>.csv    (exists) review sheets for yo, ha, ig
 SPEC.md                (exists) stack, pinned versions, constraints, component contracts
 pyproject.toml         (exists) ruff + pytest config
 requirements.txt       (exists) pinned app dependencies (vllm pinned in deploy/natlas_serve.py)
@@ -197,6 +209,10 @@ Quality: Yoruba and Hausa good, Igbo weaker (label it beta). Place names come ou
 - Ruff for lint and format: `ruff check . && ruff format .`.
 - Log with `print`/`logging` as one JSON line per event; never log coordinates, audio or raw session IDs.
 - User-facing strings live only in `app/templates/<lang>.json`, never inline in code.
+- **Template keys are frozen** (8 Oct, for the native-speaker review). Do not add, rename or remove a
+  key without asking the user first. Changing English wording also needs the review sheets regenerated.
+- Store user text only through `app.privacy.for_storage()` (scrubbed: numbers, phones, emails; capped at
+  300 chars). Raw text may be used inside the turn (regex, intent) but never stored.
 - Language codes everywhere: `en`, `yo`, `ha`, `ig`.
 - Every external failure maps to a friendly, localised message plus a next step.
 
@@ -216,8 +232,9 @@ Quality: Yoruba and Hausa good, Igbo weaker (label it beta). Place names come ou
 
 One JSONL row per user turn:
 `ts, user_hash, channel(web), lang, input(voice|text|location|choice), transcript, intent,
-postcode_found(bool|null), api_status, latency_ms{asr,llm,api,total}, reply_kind, feedback(yes|no|null),
-knew_postcode_before(bool|null)`. No coordinates, raw session IDs or audio.
+llm_status(ok|timeout|error|bad_json|null), postcode_found(bool|null), api_status,
+latency_ms{asr,llm,api,total}, reply_kind, feedback(yes|no|null), knew_postcode_before(bool|null)`.
+No coordinates, raw session IDs or audio; `transcript` is scrubbed and capped. Rows start at consent.
 
 ## Definition of done for any change
 
@@ -225,7 +242,8 @@ knew_postcode_before(bool|null)`. No coordinates, raw session IDs or audio.
 - Templates exist for all four languages. Strings not yet checked by a native speaker are listed by key
   in that file's `_todo_review` array (the string itself stays displayable); remove the key once reviewed.
   `pytest -m pilot` (not in the default run) fails until every `_todo_review` list is empty; it must pass
-  before real users.
+  before real users. Reviewers fill `docs/review/<lang>.csv` (`python scripts/review_sheet.py`); apply
+  with `python scripts/apply_review.py <lang>`.
 - No new runtime dependency on a non-N-ATLAS model or an unapproved external service.
 - This file is updated if commands, layout or rules changed; SPEC.md if versions, contracts or budgets changed.
 
@@ -251,3 +269,8 @@ account is locked. The Twilio echo prototype is kept in `archive/twillo_echo.py`
 - 2026-10-08: Templates for en/yo/ha/ig (en final; yo/ha/ig drafts, all translated keys in `_todo_review`).
   `app/store.py`: user hashing, sessions, JSONL log with one file per container per day.
 - 2026-10-08: `pytest -m pilot` gate for template review; Definition of done uses the `_todo_review` list.
+- 2026-10-08: Orchestrator with service Protocols (`app/services/interfaces.py`). Logging starts at
+  consent; declining deletes the session. LLM failure degrades to the keyword safety net.
+- 2026-10-08: Onboarding is language -> consent -> knew_before -> ready. `app/privacy.py` scrubs PII
+  before storage (300-char cap). `llm_status` in the log. Anonymous daily decline counter. `ask_code`
+  offers code or location. Template keys frozen; review sheets in `docs/review/`.

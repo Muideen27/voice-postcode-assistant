@@ -1,0 +1,44 @@
+﻿key,english,draft,reviewer_text,notes
+language_name,English,Yorùbá,,"The name of this language, written in this language (shown on the first screen)."
+welcome,"Welcome! Find, check and understand your new postcode by speaking. We do not ask for your name, phone number or NIN. Your location is used once to find your postcode and is not kept. Voice notes are deleted after we read them.","Ẹ káàbọ̀! Ẹ lè rí, ṣàyẹ̀wò, kí ẹ sì mọ ìtumọ̀ pósíkòdì tuntun yín nípa sísọ̀rọ̀. A kò béèrè orúkọ yín, nọ́mbà fóònù tàbí NIN. Ẹ̀ẹ̀kan ṣoṣo la ó lo ibi tí ẹ wà láti wá pósíkòdì yín, a kò sì ní tọ́jú rẹ̀. A ó pa ohùn yín rẹ́ lẹ́yìn tí a bá kà á.",,
+consent_button,"I agree, continue","Mo gbà, ẹ jẹ́ ká tẹ̀síwájú",,Button label: keep it short.
+declined,No problem. Nothing was saved. You can come back any time.,Kò burú. A kò fi nǹkan kan pamọ́. Ẹ lè padà wá nígbàkígbà.,,
+ask_knew_before,Before we start: did you know your new postcode before today?,Kí a tó bẹ̀rẹ̀: ṣé ẹ mọ pósíkòdì tuntun yín ṣáájú òní?,,
+knew_yes,Yes,Bẹ́ẹ̀ ni,,Button label: keep it short.
+knew_no,No,Rárá,,Button label: keep it short.
+knew_skip,Skip,Fò ó,,Button label: keep it short.
+menu,"What would you like to do? Tap the microphone and speak, share your location to get your postcode, or type a postcode to check it.","Kí ni ẹ fẹ́ ṣe? Ẹ tẹ gbohùngbohùn kí ẹ sọ̀rọ̀, ẹ fi ibi tí ẹ wà ránṣẹ́ láti gba pósíkòdì yín, tàbí ẹ tẹ pósíkòdì kan láti ṣàyẹ̀wò rẹ̀.",,
+btn_speak,Tap and speak,Tẹ kí o sọ̀rọ̀,,Button label: keep it short.
+btn_stop,Stop,Dúró,,Button label: keep it short.
+btn_location,Get my postcode,Gba pósíkòdì mi,,Button label: keep it short.
+btn_type,Type instead,Kọ ọ́ dípò,,Button label: keep it short.
+btn_send,Send,Fi ránṣẹ́,,Button label: keep it short.
+ask_location,"To find your postcode, stand at your building and tap ""Get my postcode"" to share your location.","Láti rí pósíkòdì yín, ẹ dúró sí ilé yín kí ẹ tẹ ""Gba pósíkòdì mi"" láti fi ibi tí ẹ wà ránṣẹ́.",,A quoted button name must match that button's text in your language (btn_* rows).
+postcode_result,Your postcode is {display}.,Pósíkòdì yín ni {display}.,,Keep {display} exactly as written; it is filled in by the app.
+seg_state_code,your state,ìpínlẹ̀ yín,,"Shown after a code, e.g. ""11 = <this text>""."
+seg_lga,your Local Government Area,ìjọba ìbílẹ̀ yín,,"Shown after a code, e.g. ""11 = <this text>""."
+seg_district,your district,ẹkùn yín,,"Shown after a code, e.g. ""11 = <this text>""."
+seg_area,your area,àdúgbò yín,,"Shown after a code, e.g. ""11 = <this text>""."
+seg_building,your building,ilé yín,,"Shown after a code, e.g. ""11 = <this text>""."
+confidence_low,"This is the nearest building we found, {distance} m away. If you can, compare it with the postcode plate on your building.","Èyí ni ilé tó súnmọ́ jùlọ tí a rí, {distance} mítà sí yín. Tí ẹ bá lè ṣe é, ẹ fi wé pósíkòdì tó wà lára ilé yín.",,Keep {distance} exactly as written; it is filled in by the app.
+postcode_not_found,"We could not find a building postcode near you. Stand outside, close to your building, and share your location again.","A kò rí pósíkòdì ilé kankan nítòsí yín. Ẹ jáde síta, ẹ súnmọ́ ilé yín, kí ẹ tún fi ibi tí ẹ wà ránṣẹ́.",,
+location_denied,"We could not get your location. Allow location for this page in your browser settings, then try again.","A kò lè rí ibi tí ẹ wà. Ẹ gba ojú-ìwé yìí láàyè láti lo ibi tí ẹ wà nínú ètò búráúsà yín, kí ẹ tún gbìyànjú.",,
+validation_valid,{display} is a valid postcode.,{display} jẹ́ pósíkòdì tó tọ́.,,Keep {display} exactly as written; it is filled in by the app.
+validation_not_found,"{display} was not found. Check each letter and number, then try again.","A kò rí {display}. Ẹ ṣàyẹ̀wò lẹ́tà àti nọ́mbà kọ̀ọ̀kan, kí ẹ tún gbìyànjú.",,Keep {display} exactly as written; it is filled in by the app.
+validation_bad_format,That does not look like a postcode. A postcode looks like this: LA 11 A12 GN 01.,Ìyẹn kò jọ pósíkòdì. Pósíkòdì rí báyìí: LA 11 A12 GN 01.,,Keep the example postcode LA 11 A12 GN 01 exactly as written.
+explain_fallback,"A postcode has five parts. In LA 11 A12 GN 01: LA is the state, 11 is the Local Government Area, A12 is the district, GN is the area and 01 is the building.","Pósíkòdì ní apá márùn-ún. Nínú LA 11 A12 GN 01: LA ni ìpínlẹ̀, 11 ni ìjọba ìbílẹ̀, A12 ni ẹkùn, GN ni àdúgbò, 01 sì ni ilé.",,Keep the example postcode LA 11 A12 GN 01 exactly as written.
+we_heard,"We heard: ""{transcript}""","Ohun tí a gbọ́: ""{transcript}""",,Keep {transcript} exactly as written; it is filled in by the app. A quoted button name must match that button's text in your language (btn_* rows).
+not_heard,"We could not hear that clearly. Please try again in a quiet place, close to the phone.","A kò gbọ́ ọ yékéyéké. Ẹ jọ̀wọ́ tún gbìyànjú ní ibi tí kò sí ariwo, ẹ súnmọ́ fóònù.",,
+audio_too_long,That recording is too long. Please speak for less than 20 seconds.,Ohùn yìí ti gùn jù. Ẹ jọ̀wọ́ sọ̀rọ̀ fún ìṣẹ́jú-àáyá tí kò tó ogún.,,
+igbo_beta,"Igbo voice is in beta. If we mishear you, tap ""Type instead"".","Ohùn Igbo ṣì wà ní ìpele ìdánwò. Tí a kò bá gbọ́ yín dáadáa, ẹ tẹ ""Kọ ọ́ dípò"".",,A quoted button name must match that button's text in your language (btn_* rows).
+waking_up,Starting up. The first answer can take up to 3 minutes. Please keep this page open.,A ń bẹ̀rẹ̀. Ìdáhùn àkọ́kọ́ lè gba tó ìṣẹ́jú mẹ́ta. Ẹ jọ̀wọ́ ẹ má ṣe pa ojú-ìwé yìí.,,
+timeout_retry,This is taking too long. Please try again in a minute.,Ó ti pẹ́ jù. Ẹ jọ̀wọ́ tún gbìyànjú lẹ́yìn ìṣẹ́jú kan.,,
+error_slow,The postcode service is slow right now. Please try again in a minute.,Iṣẹ́ pósíkòdì ń lọ lọ́ra báyìí. Ẹ jọ̀wọ́ tún gbìyànjú lẹ́yìn ìṣẹ́jú kan.,,
+error_unavailable,The postcode service is not available right now. Please try again later.,Iṣẹ́ pósíkòdì kò sí lárọ̀ọ́wọ́tó báyìí. Ẹ jọ̀wọ́ tún gbìyànjú nígbà míì.,,
+error_generic,"Sorry, something went wrong on our side. Please try again later.","Ẹ má bínú, nǹkan kan bàjẹ́ ní ọ̀dọ̀ wa. Ẹ jọ̀wọ́ tún gbìyànjú nígbà míì.",,
+feedback_question,Did this help?,Ṣé èyí ràn yín lọ́wọ́?,,
+feedback_yes,"Yes, it helped","Bẹ́ẹ̀ ni, ó ràn mí lọ́wọ́",,Button label: keep it short.
+feedback_no,No,Rárá,,Button label: keep it short.
+thanks,Thank you for your feedback!,Ẹ ṣé fún èsì yín!,,
+decline_button,"No, thanks","Rárá, ẹ ṣé",,Button label: keep it short.
+ask_code,"Say or type the postcode you want to check, or tap ""Get my postcode"" to share your location and find your postcode.","Ẹ sọ tàbí kọ pósíkòdì tí ẹ fẹ́ ṣàyẹ̀wò, tàbí ẹ tẹ ""Gba pósíkòdì mi"" láti fi ibi tí ẹ wà ránṣẹ́ kí ẹ sì rí pósíkòdì yín.",,A quoted button name must match that button's text in your language (btn_* rows).

@@ -8,6 +8,8 @@ LANGS: tuple[Lang, ...] = ("en", "yo", "ha", "ig")
 
 EventType = Literal["text", "voice", "location", "choice", "feedback"]
 ReplyKind = Literal[
+    "welcome",
+    "declined",
     "menu",
     "language_menu",
     "postcode",
@@ -15,6 +17,7 @@ ReplyKind = Literal[
     "answer",
     "ask_location",
     "ask_knew_before",
+    "ask_code",
     "error",
     "thanks",
 ]

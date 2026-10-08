@@ -134,8 +134,8 @@ class Event:
 ```python
 @dataclass
 class Reply:
-    kind: Literal["menu", "language_menu", "postcode", "validation", "answer",
-                  "ask_location", "ask_knew_before", "error", "thanks"]
+    kind: Literal["welcome", "declined", "menu", "language_menu", "postcode", "validation", "answer",
+                  "ask_location", "ask_knew_before", "ask_code", "error", "thanks"]
     lang: str
     text: str                           # final localised text, ≤ 600 chars
     postcode: str | None = None         # "LA-11-A12-GN-01"
@@ -173,9 +173,12 @@ Example expected output for a location in Ikeja (en):
 {"intent":"get_my_postcode","places_mentioned":["Ibeju-Lekki","Lagos"]}
 ```
 - `intent` ∈ `get_my_postcode | validate_postcode | explain_postcode | greeting | other`.
-- Post-processing, in order: (1) a postcode is found in the text (see below) → `validate_postcode`;
-  (2) intent is `other` but a keyword hit (`postcode|pósíkòdì|kóòdù|koodu|lamba|adirẹsi|address`)
-  → `get_my_postcode`; (3) still `other` → menu.
+- Order: (1) a postcode is found in the text (see below) → `lookup` directly, **the LLM is not called**;
+  (2) otherwise classify; if the LLM fails or times out, treat the intent as `other`;
+  (3) intent `other` → keyword safety net on lower-cased, diacritic-free text: a validation word
+  (`valid|correct|check|real|confirm|tona|sayewo|daidai|ingantacciya|duba|ziri ezi|lelee`) →
+  `validate_postcode`, else a postcode word (`postcode|post code|posikodi|koodu|lamba|adiresi|address`) →
+  `get_my_postcode`; (4) still `other` → menu. `validate_postcode` with no code in the text → `ask_code`.
 - Postcode search (in `app/services/postcode.py`, `find_postcode(text)`): case-insensitive, **unanchored**,
   segments separated by `-`, spaces or nothing:
   `\b([A-Z]{2})[\s-]?(\d{2})[\s-]?([A-Z0-9]{3})[\s-]?([A-Z]{2})[\s-]?(\d{2})\b`. Matches are normalised
@@ -222,7 +225,8 @@ call level 1, so it signals a config bug); `429` → wait and retry once after 2
 | Route | Request | Response |
 |---|---|---|
 | `GET /` | none | `index.html` (< 50 KB) |
-| `POST /api/language` | `{"session":"<uuid>","lang":"yo"}` | `Reply` (`ask_knew_before` for a new user, else menu) |
+| `POST /api/language` | `{"session":"<uuid>","lang":"yo"}` | `Reply` (`welcome` with consent for a new user, else `menu`) |
+| `POST /api/consent` | `{"session","agree":true\|false}` | `Reply` (`ask_knew_before`, or `declined`) |
 | `POST /api/location` | `{"session","lat","lng","accuracy_m"}` | `Reply` (postcode) |
 | `POST /api/voice` | multipart: `session`, `audio` file | `Reply` (any kind) |
 | `POST /api/text` | `{"session","text"}` (≤ 500 chars) | `Reply` |
@@ -230,6 +234,11 @@ call level 1, so it signals a config bug); `429` → wait and retry once after 2
 | `POST /api/feedback` | `{"session","knew_before":true\|false\|null}` (null = skipped) | `Reply` (menu) |
 
 `session` is a random UUID kept in the browser; the server hashes it before use.
+
+The first screen (`GET /`) is the language menu: the four language names, each in its own language, and
+the N-ATLaS attribution, nothing else. It needs no API call. Rendering rules for the page: `welcome` →
+consent and decline buttons; `ask_knew_before` → yes / no / skip; `ask_code` → **both** a location button
+and a text box; `postcode`, `validation`, `answer` → feedback buttons.
 
 ### 3.8 Interaction log
 
@@ -240,18 +249,31 @@ that is not a sha256 hex digest:
 
 ```json
 {"ts":"2026-10-10T14:52:03+01:00","user_hash":"7f3a…","channel":"web","lang":"yo","input":"voice",
- "transcript":"ẹjọ́, mo fẹ́ mọ pósíkòdì ilé mi","intent":"get_my_postcode","postcode_found":null,
+ "transcript":"ẹjọ́, mo fẹ́ mọ pósíkòdì ilé mi","intent":"get_my_postcode","llm_status":"ok","postcode_found":null,
  "api_status":null,"latency_ms":{"asr":2400,"llm":2100,"api":null,"total":4700},
  "reply_kind":"ask_location","feedback":null,"knew_postcode_before":null}
 ```
 
-`knew_postcode_before` is asked once per user, right after the language choice and **before any postcode
+`knew_postcode_before` is asked once per user, right after consent (language → consent → this question) and **before any postcode
 is shown** (asking after a result would bias it). It is skippable (→ null) and is set only on the row of
 the turn that answers it (null elsewhere).
 
 Sessions live in a `modal.Dict` keyed by `user_hash`, stored as plain dicts:
-`{lang, consented, knew_before_asked, awaiting: "knew_before"|"feedback"|null, turns}`. No postcode,
-coordinates or text are kept in the session.
+`{stage: "consent"|"knew_before"|"ready", lang, awaiting_feedback, turns}`. Stage `new` (language menu)
+is never stored: a session is written only once a language is chosen. No postcode, coordinates or text are
+kept in the session. Declining consent deletes the session.
+
+Declines: an anonymous daily counter in its own `modal.Dict`, `{"YYYY-MM-DD": count}` (WAT), with no
+hash, session or text. `scripts/export_log.py` reports it alongside the log summary.
+
+Logging rule: one row per user turn **after consent**. The language menu, welcome and a declined consent
+write nothing. `transcript` holds the ASR text for voice and the typed text for text input, always passed
+through `app.privacy.for_storage()`: postcodes kept; emails → `[EMAIL]`; Nigerian phones (`+234…`,
+`0[789][01]…`) → `[PHONE]`; any other run of 7+ digits (NIN, BVN, account numbers) → `[NUMBER]`; then
+capped at 300 characters. Names are not redacted (not reliable), which is why the cap exists.
+`llm_status` is `ok|timeout|error|bad_json`, or null when the LLM was not called. On LLM failure the
+logged `intent` is `other` (routing still uses the keyword net).
+`reply_kind` is `Reply.kind`, except `template_fallback` when the explain answer came from the template.
 
 `scripts/export_log.py` must glob `interactions-*.jsonl` across all days and containers, merge the rows,
 sort them by `ts`, and drop duplicates on `(ts, user_hash)`. Output: `docs/validation_log.csv` plus a summary table (counts per language, input,
@@ -268,7 +290,7 @@ intent, completion rate, median latency, helpful %, % who did not know their pos
 - [ ] LLM guard rejects a reply that contains a URL or an unknown postcode (unit test with a fake LLM).
 - [ ] Web page under 50 KB, works on a low-end Android phone over mobile data.
 - [ ] Cold GPU: the page shows progress and gets a reply (or a retry message) within 180 s.
-- [ ] Log rows contain no coordinates, raw session IDs or audio.
+- [ ] Log rows contain no coordinates, raw session IDs or audio; transcripts are scrubbed (NIN, phone, email).
 - [ ] Attribution visible on welcome screen and footer.
 - [ ] Every template string reviewed by a native speaker (`_todo_review` empty in yo/ha/ig).
 - [ ] `pytest -m pilot` passes (all `_todo_review` lists empty).
@@ -303,3 +325,9 @@ The Twilio echo prototype is kept in `archive/twillo_echo.py`.
   per row; session fields defined; review marker is the `_todo_review` key list in each template file.
 - 2026-10-08: `export_log.py` merge/sort/dedupe contract. Pilot gate: `pytest -m pilot` (excluded from
   the default run) fails while any `_todo_review` list is non-empty.
+- 2026-10-08: Orchestrator contract: `Reply.kind` adds `welcome`, `declined`, `ask_code`; session uses
+  `stage`; LLM failure falls back to the keyword net; validation keywords added to the net; logging starts
+  at consent. Segment template strings are labels only; lines are built as `<CODE> = <label>`.
+- 2026-10-08: Onboarding order language → consent → knew_before; new `POST /api/consent`; `/api/language`
+  returns the welcome. PII scrub + 300-char cap on stored text. `llm_status` added to the log schema.
+  Anonymous daily decline counter. `ask_code` shows location button and text box. Template keys frozen.

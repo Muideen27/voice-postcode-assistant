@@ -12,12 +12,15 @@ from app.store import (
     JsonlLog,
     Latency,
     LogRow,
+    MemoryDeclineCounter,
     MemoryLog,
     MemorySessionStore,
+    ModalDictDeclineCounter,
     ModalDictSessionStore,
     Session,
     hash_user,
     now_wat,
+    today_wat,
 )
 
 SESSION_ID = "6f1c2b8e-0d3a-4e55-9a7b-2c1d0e9f8a11"
@@ -56,9 +59,12 @@ def test_memory_store_new_user_gets_defaults() -> None:
 
 def test_memory_store_round_trip() -> None:
     store = MemorySessionStore()
-    session = Session(lang="yo", consented=True, knew_before_asked=True, awaiting="feedback", turns=3)
+    session = Session(stage="ready", lang="yo", awaiting_feedback=True, turns=3)
     run(store.put(USER, session))
     assert run(store.get(USER)) == session
+    run(store.delete(USER))
+    run(store.delete(USER))  # deleting twice is fine
+    assert run(store.get(USER)) == Session()
 
 
 def test_session_ignores_unknown_fields_from_older_versions() -> None:
@@ -80,17 +86,25 @@ class FakeModalDict:
             async def aio(self, key: str, value: Any) -> None:
                 outer.data[key] = value
 
+        class _Pop:
+            async def aio(self, key: str) -> Any:
+                return outer.data.pop(key)  # KeyError when missing, like modal.Dict
+
         self.get = _Get()
         self.put = _Put()
+        self.pop = _Pop()
 
 
 def test_modal_dict_store_stores_plain_dicts() -> None:
     fake = FakeModalDict()
     store = ModalDictSessionStore(fake)
-    run(store.put(USER, Session(lang="ig", consented=True)))
+    run(store.put(USER, Session(stage="ready", lang="ig")))
     assert isinstance(fake.data[USER], dict)
-    assert run(store.get(USER)) == Session(lang="ig", consented=True)
+    assert run(store.get(USER)) == Session(stage="ready", lang="ig")
     assert run(store.get("missing")) == Session()
+    run(store.delete(USER))
+    run(store.delete(USER))
+    assert USER not in fake.data
 
 
 # ---------------------------------------------------------------- log rows
@@ -169,3 +183,25 @@ def test_jsonl_log_uses_container_suffix_and_commits(tmp_path: Path) -> None:
     run(log.append(make_row()))
     assert (tmp_path / "logs" / "interactions-2026-10-10-ta-123.jsonl").exists()
     assert commits == 1
+
+
+# ---------------------------------------------------------------- decline counter
+
+
+def test_memory_decline_counter_counts_per_day() -> None:
+    counter = MemoryDeclineCounter()
+    run(counter.increment())
+    run(counter.increment())
+    assert counter.counts == {today_wat(): 2}
+
+
+def test_modal_dict_decline_counter_stores_only_date_and_count() -> None:
+    fake = FakeModalDict()
+    counter = ModalDictDeclineCounter(fake)
+    run(counter.increment())
+    run(counter.increment())
+    assert fake.data == {today_wat(): 2}
+
+
+def test_llm_status_is_in_the_schema() -> None:
+    assert json.loads(make_row(llm_status="timeout").to_json())["llm_status"] == "timeout"
