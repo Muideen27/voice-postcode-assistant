@@ -15,3 +15,5 @@ soundfile==0.14.0
 # Dev only
 pytest==9.1.1
 ruff==0.16.10
+fonttools==4.66.1   # scripts/build_fonts.py
+brotli==1.2.0       # woff2 output for fonttools

@@ -44,15 +44,16 @@ class FakePostcode:
 
 
 class FakeIntent:
-    def __init__(self, intent: str | Exception = "other") -> None:
+    def __init__(self, intent: str | Exception = "other", faq_id: str | None = None) -> None:
         self._intent = intent
+        self._faq_id = faq_id
         self.calls: list[tuple[str, str]] = []
 
     async def classify(self, text: str, lang: Lang) -> IntentResult:
         self.calls.append((text, lang))
         if isinstance(self._intent, Exception):
             raise self._intent
-        return IntentResult(self._intent)  # type: ignore[arg-type]
+        return IntentResult(self._intent, faq_id=self._faq_id)  # type: ignore[arg-type]
 
 
 class FakeReply:
@@ -98,6 +99,7 @@ class Harness:
             declines=self.declines,
             states=load_states(),
             templates=T,
+            explain_mode=services.get("explain_mode", "faq"),
         )
 
     def send(self, type_: str, text: str | None = None, **kw: Any):
@@ -339,7 +341,12 @@ def test_validate_intent_without_code_asks_for_code() -> None:
 
 
 def test_explain_uses_reply_service() -> None:
-    h = ready("yo", intent=FakeIntent("explain_postcode"), reply=FakeReply("Pósíkòdì ní apá márùn-ún."))
+    h = ready(
+        explain_mode="generate",
+        lang="yo",
+        intent=FakeIntent("explain_postcode"),
+        reply=FakeReply("Pósíkòdì ní apá márùn-ún."),
+    )
     reply = h.send("text", "kí ni LA túmọ̀ sí?")
     assert reply.kind == "answer"
     assert reply.text.startswith("Pósíkòdì ní apá márùn-ún.")
@@ -359,7 +366,9 @@ def test_explain_uses_reply_service() -> None:
     ],
 )
 def test_explain_falls_back_to_template(answer: Any) -> None:
-    h = ready("en", intent=FakeIntent("explain_postcode"), reply=FakeReply(answer))
+    h = ready(
+        explain_mode="generate", lang="en", intent=FakeIntent("explain_postcode"), reply=FakeReply(answer)
+    )
     reply = h.send("text", "what does each part mean")
     assert reply.text.startswith(T["en"]["explain_fallback"])
     assert h.last_row["reply_kind"] == "template_fallback"
@@ -367,7 +376,10 @@ def test_explain_falls_back_to_template(answer: Any) -> None:
 
 def test_explain_allows_the_documented_example_code() -> None:
     h = ready(
-        "en", intent=FakeIntent("explain_postcode"), reply=FakeReply("In LA-11-A12-GN-01, LA is the state.")
+        explain_mode="generate",
+        lang="en",
+        intent=FakeIntent("explain_postcode"),
+        reply=FakeReply("In LA-11-A12-GN-01, LA is the state."),
     )
     assert h.send("text", "explain please").text.startswith("In LA-11-A12-GN-01")
 
@@ -437,7 +449,12 @@ def test_llm_status_ok_and_absent() -> None:
 
 
 def test_explain_failure_sets_llm_status() -> None:
-    h = ready("en", intent=FakeIntent("explain_postcode"), reply=FakeReply(LlmError("timeout")))
+    h = ready(
+        explain_mode="generate",
+        lang="en",
+        intent=FakeIntent("explain_postcode"),
+        reply=FakeReply(LlmError("timeout")),
+    )
     h.send("text", "what does GN mean")
     assert (h.last_row["llm_status"], h.last_row["reply_kind"]) == ("timeout", "template_fallback")
 
@@ -624,7 +641,7 @@ def test_low_confidence_intent_goes_through_the_safety_net() -> None:
 
 
 def test_confident_intent_is_used() -> None:
-    h = ready("en", intent=ConfidentIntent("explain_postcode", 0.8))
+    h = ready(explain_mode="generate", lang="en", intent=ConfidentIntent("explain_postcode", 0.8))
     assert h.send("text", "my postcode please").kind == "answer"
 
 
@@ -644,5 +661,69 @@ def test_resolve_intent(text: str, result: IntentResult | None, expected: str) -
 
 def test_explain_answer_may_show_the_format_pattern() -> None:
     answer = "A postcode looks like AA-99-H77-BB-55, for example LA-11-A12-GN-01."
-    h = ready("en", intent=FakeIntent("explain_postcode"), reply=FakeReply(answer))
+    h = ready(
+        explain_mode="generate", lang="en", intent=FakeIntent("explain_postcode"), reply=FakeReply(answer)
+    )
     assert h.send("text", "what is the format").text.startswith(answer)
+
+
+# ---------------------------------------------------------------- FAQ routing (EXPLAIN_MODE=faq, default)
+
+
+@pytest.mark.parametrize(
+    ("faq_id", "kind"),
+    [
+        ("what_is", "answer"),
+        ("parts", "answer"),
+        ("since_when", "answer"),
+        ("privacy", "answer"),
+        ("who_built", "answer"),
+        ("get_mine", "ask_location"),
+        ("place_name_no", "ask_location"),
+        ("check_one", "ask_code"),
+    ],
+)
+@pytest.mark.parametrize("lang", ["en", "yo"])
+def test_faq_routing_answers_from_templates(faq_id: str, kind: str, lang: Lang) -> None:
+    h = ready(lang, intent=FakeIntent("explain_postcode", faq_id=faq_id))
+    reply = h.send("text", "a question")
+    assert (reply.kind, reply.lang) == (kind, lang)
+    assert reply.text.startswith(T[lang][f"faq_{faq_id}"])
+    assert h.reply.calls == []  # no generated text in faq mode
+    assert h.last_row["reply_kind"] == f"faq_{faq_id}"
+    assert h.session().awaiting_feedback is (kind == "answer")
+
+
+def test_faq_none_gives_fallback_and_menu() -> None:
+    h = ready("ha", intent=FakeIntent("explain_postcode", faq_id=None))
+    reply = h.send("text", "wata tambaya")
+    assert reply.kind == "menu"
+    assert reply.text == f"{T['ha']['explain_fallback']}\n{T['ha']['menu']}"
+    assert h.last_row["reply_kind"] == "template_fallback"
+
+
+def test_faq_place_name_no_offers_location() -> None:
+    h = ready("en", intent=FakeIntent("explain_postcode", faq_id="place_name_no"))
+    reply = h.send("text", "can you find it from my street name")
+    assert reply.kind == "ask_location"
+    assert "cannot get your postcode from a street or place name" in reply.text
+
+
+# ---------------------------------------------------------------- cold start
+
+
+def test_timeout_with_no_keyword_says_warming_up() -> None:
+    h = ready("yo", intent=FakeIntent(LlmError("timeout")))
+    reply = h.send("text", "ẹ káàsán")
+    assert (reply.kind, reply.text) == ("error", T["yo"]["warming_up"])
+    assert (h.last_row["llm_status"], h.last_row["intent"]) == ("timeout", "other")
+
+
+def test_timeout_with_keyword_uses_safety_net() -> None:
+    h = ready("en", intent=FakeIntent(LlmError("timeout")))
+    assert h.send("text", "my postcode please").kind == "ask_location"
+
+
+def test_non_timeout_failure_with_no_keyword_shows_menu() -> None:
+    h = ready("en", intent=FakeIntent(LlmError("bad_json")))
+    assert h.send("text", "hello there").kind == "menu"

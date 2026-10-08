@@ -42,7 +42,16 @@
     "feedback_no",
     "thanks",
     "decline_button",
-    "ask_code"
+    "ask_code",
+    "faq_what_is",
+    "faq_parts",
+    "faq_since_when",
+    "faq_get_mine",
+    "faq_check_one",
+    "faq_place_name_no",
+    "faq_privacy",
+    "faq_who_built",
+    "warming_up"
   ],
   "language_name": "Yorùbá",
   "attribution": "N-ATLaS is an initiative of the Federal Ministry of Communications, Innovation and Digital Economy, and powered by Awarri Technologies.",
@@ -87,5 +96,14 @@
   "feedback_question": "Ṣé èyí ràn yín lọ́wọ́?",
   "feedback_yes": "Bẹ́ẹ̀ ni, ó ràn mí lọ́wọ́",
   "feedback_no": "Rárá",
-  "thanks": "Ẹ ṣé fún èsì yín!"
+  "thanks": "Ẹ ṣé fún èsì yín!",
+  "faq_what_is": "Pósíkòdì jẹ́ kóòdù tó ní apá márùn-ún: ìpínlẹ̀, ìjọba ìbílẹ̀ (LGA), ẹkùn, àdúgbò àti ẹ̀ka ilé. A ń kọ ọ́ báyìí: AA-99-H77-BB-55, fún àpẹẹrẹ LA-11-A12-GN-01. Pósíkòdì tuntun Nàìjíríà ti bẹ̀rẹ̀ láti 1 Oṣù Kẹwàá 2026.",
+  "faq_parts": "Pósíkòdì ní apá márùn-ún. Nínú LA-11-A12-GN-01: LA ni ìpínlẹ̀, 11 ni ìjọba ìbílẹ̀ (LGA), A12 ni ẹkùn, GN ni àdúgbò, 01 sì ni ẹ̀ka ilé.",
+  "faq_since_when": "Pósíkòdì tuntun Nàìjíríà ti bẹ̀rẹ̀ iṣẹ́ láti 1 Oṣù Kẹwàá 2026.",
+  "faq_get_mine": "Láti gba pósíkòdì yín, ẹ tẹ \"Gba pósíkòdì mi\" láti fi ibi tí ẹ wà ránṣẹ́. A ó wá pósíkòdì ibi tí ẹ wà.",
+  "faq_check_one": "Láti ṣàyẹ̀wò pósíkòdì, ẹ sọ ọ́ tàbí kí ẹ kọ ọ́, fún àpẹẹrẹ LA 11 A12 GN 01. A ó sọ fún yín bóyá ó tọ́.",
+  "faq_place_name_no": "A kò lè rí pósíkòdì yín láti orúkọ òpópónà tàbí orúkọ ibì kan. Ẹ tẹ \"Gba pósíkòdì mi\" láti fi ibi tí ẹ wà ránṣẹ́.",
+  "faq_privacy": "A kò béèrè orúkọ yín, nọ́mbà fóònù tàbí NIN. Ẹ̀ẹ̀kan ṣoṣo la ó lo ibi tí ẹ wà láti wá pósíkòdì yín, a kò sì ní tọ́jú rẹ̀. A ó pa ohùn yín rẹ́ lẹ́yìn tí a bá kà á.",
+  "faq_who_built": "Olùgbéejáde aládàáni kan ló ṣe olùrànlọ́wọ́ yìí fún National AI Innovation Challenge 2026. N-ATLaS is an initiative of the Federal Ministry of Communications, Innovation and Digital Economy, and powered by Awarri Technologies. Àwọn dátà pósíkòdì wá láti Nigeria Postcode API.",
+  "warming_up": "Olùrànlọ́wọ́ náà ṣì ń jí. Ẹ jọ̀wọ́ tún gbìyànjú lẹ́yìn ìṣẹ́jú kan."
 }

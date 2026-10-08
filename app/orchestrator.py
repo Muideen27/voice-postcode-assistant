@@ -11,9 +11,9 @@ import time
 import unicodedata
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
-from app.events import LANGS, Event, Lang, Reply
+from app.events import LANGS, Event, Lang, Reply, ReplyKind
 from app.privacy import for_storage
 from app.services.interfaces import (
     AsrError,
@@ -26,7 +26,7 @@ from app.services.interfaces import (
     ReplyService,
 )
 from app.services.postcode import POSTCODE_RE, PostcodeError, display, find_postcode, normalise, segments
-from app.services.prompts import LOW_CONFIDENCE
+from app.services.prompts import FAQ_IDS, LOW_CONFIDENCE
 from app.store import (
     DeclineCounter,
     Feedback,
@@ -77,6 +77,14 @@ ASR_ERROR_TEMPLATES = {
     "unavailable": "error_generic",
 }
 SEGMENT_KEYS = ("seg_lga", "seg_district", "seg_area", "seg_building")
+# EXPLAIN_MODE: "faq" (production) answers explain questions with reviewed templates; "generate" uses the
+# LLM fact-sheet answer behind the guard (kept for evals, off in production).
+ExplainMode = Literal["faq", "generate"]
+FAQ_REPLY_KINDS: dict[str, ReplyKind] = {
+    "get_mine": "ask_location",
+    "place_name_no": "ask_location",
+    "check_one": "ask_code",
+}
 
 
 def load_templates(directory: Path = TEMPLATES_DIR) -> dict[Lang, dict[str, str]]:
@@ -152,6 +160,7 @@ class Orchestrator:
         declines: DeclineCounter,
         states: dict[str, str],
         templates: dict[Lang, dict[str, str]] | None = None,
+        explain_mode: ExplainMode = "faq",
     ) -> None:
         self.postcode = postcode
         self.intent = intent
@@ -162,6 +171,7 @@ class Orchestrator:
         self.declines = declines
         self.states = states
         self.templates = templates or load_templates()
+        self.explain_mode = explain_mode
 
     # ---------------------------------------------------------------- entry point
 
@@ -337,8 +347,26 @@ class Orchestrator:
         if intent == "validate_postcode":  # no code was found in the text
             return Reply(kind="ask_code", lang=lang, text=self._t(lang, "ask_code"))
         if intent == "explain_postcode":
-            return await self._explain(text, s, turn, lang)
+            if self.explain_mode == "generate":
+                return await self._explain(text, s, turn, lang)
+            return self._faq(result.faq_id if result else None, s, turn, lang)
+        if result is None and turn.llm_status == "timeout":  # cold GPU and the keyword net found nothing
+            return self._error(lang, "warming_up")
         return self._menu(lang)
+
+    def _faq(self, faq_id: str | None, s: Session, turn: _Turn, lang: Lang) -> Reply:
+        """FAQ routing (EXPLAIN_MODE=faq): a reviewed template per faq_id; no generated text is shown."""
+        if faq_id not in FAQ_IDS:
+            turn.reply_kind = "template_fallback"
+            text = "\n".join([self._t(lang, "explain_fallback"), self._t(lang, "menu")])
+            return Reply(kind="menu", lang=lang, text=text)
+        turn.reply_kind = f"faq_{faq_id}"
+        kind = FAQ_REPLY_KINDS.get(faq_id, "answer")
+        text = self._t(lang, f"faq_{faq_id}")
+        if kind != "answer":  # the page shows the location button / code box instead of feedback
+            return Reply(kind=kind, lang=lang, text=text)
+        s.awaiting_feedback = True
+        return Reply(kind="answer", lang=lang, text=self._with_feedback(lang, [text]))
 
     async def _validate(self, code: str, s: Session, turn: _Turn, lang: Lang) -> Reply:
         start = time.perf_counter()

@@ -70,13 +70,15 @@ def test_intent_request_follows_conventions() -> None:
         0.92,
         ("Ojota",),
     )
+    assert result.faq_id is None
     req = seen[0]
     assert req["url"] == "https://natlas.example/v1/chat/completions"
     assert req["auth"] == "Bearer secret"
     assert (req["model"], req["temperature"], req["max_tokens"]) == ("natlas", 0, 80)
     schema = req["response_format"]["json_schema"]["schema"]
     assert schema["properties"]["intent"]["enum"] == list(prompts.INTENTS)
-    assert set(schema["required"]) == {"intent", "confidence", "places_mentioned"}
+    assert set(schema["required"]) == {"intent", "faq_id", "confidence", "places_mentioned"}
+    assert schema["properties"]["faq_id"]["enum"] == [*prompts.FAQ_IDS, "none"]
     assert "Yoruba" in req["messages"][0]["content"]
     assert req["messages"][-1] == {"role": "user", "content": "mo fe mo posikodi mi"}
 
@@ -89,6 +91,7 @@ def test_intent_request_follows_conventions() -> None:
         '{"confidence": 0.9}',
         '{"intent": "greeting", "confidence": "high", "places_mentioned": []}',
         '{"intent": "greeting", "confidence": 0.9, "places_mentioned": "Lagos"}',
+        '{"intent": "explain_postcode", "faq_id": "history", "confidence": 0.9, "places_mentioned": []}',
     ],
 )
 def test_intent_bad_json(content: str) -> None:
@@ -197,10 +200,67 @@ def test_explain_errors_propagate_for_llm_status() -> None:
 
 
 def test_eval_cases_are_held_out_from_few_shot() -> None:
-    from evals.cases import EXPLAIN_CASES, INTENT_CASES
+    from evals.cases import EXPLAIN_CASES, FAQ_CASES, INTENT_CASES
 
     shots = {fold(text) for text, _ in prompts.INTENT_FEW_SHOT}
     cases = [text for rows in INTENT_CASES.values() for text, _ in rows]
+    faq = [text for rows in FAQ_CASES.values() for text, _ in rows]
+    assert len(faq) == 20 and all(len(rows) == 5 for rows in FAQ_CASES.values())
+    assert {fid for rows in FAQ_CASES.values() for _, fid in rows} <= set(prompts.FAQ_IDS)
+    assert not shots & {fold(text) for text in faq}
     assert len(cases) == 40 and all(len(rows) == 10 for rows in INTENT_CASES.values())
     assert all(len(qs) == 3 for qs in EXPLAIN_CASES.values())
     assert not shots & {fold(text) for text in cases}
+
+
+# ---------------------------------------------------------------- FAQ routing, warm-up, timeout
+
+
+@pytest.mark.parametrize(
+    ("intent", "faq_id", "expected"),
+    [
+        ("explain_postcode", "place_name_no", "place_name_no"),
+        ("explain_postcode", "none", None),
+        ("greeting", "parts", None),  # faq_id only counts for explain_postcode
+    ],
+)
+def test_intent_returns_faq_id(intent: str, faq_id: str, expected: str | None) -> None:
+    content = json.dumps({"intent": intent, "faq_id": faq_id, "confidence": 0.9, "places_mentioned": []})
+    result = run(NatlasIntent(client(lambda r: chat_response(content))).classify("q", "en"))
+    assert result.faq_id == expected
+
+
+def test_few_shot_covers_every_faq_id() -> None:
+    ids = {json.loads(answer)["faq_id"] for _, answer in prompts.INTENT_FEW_SHOT}
+    assert ids == {*prompts.FAQ_IDS, "none"}
+
+
+def test_turn_timeout_is_20_seconds() -> None:
+    from app.services.llm import TIMEOUT
+
+    assert TIMEOUT.read == 20.0
+
+
+def test_warm_sends_a_one_token_request_and_swallows_errors() -> None:
+    seen: list[dict[str, Any]] = []
+    run(client(capture("x", seen)).warm())
+    assert seen[0]["max_tokens"] == 1
+
+    def down(request: httpx.Request) -> httpx.Response:
+        raise httpx.ConnectError("down", request=request)
+
+    run(client(down).warm())  # no exception
+
+
+@pytest.mark.parametrize(
+    ("answer", "question", "reason"),
+    [
+        ("In LA-11-A12-GN-01, the district is in Ikoyi.", "", "unknown_capitalised_word"),
+        ("The area code GN stands for Obalende here.", "", "unknown_capitalised_word"),
+        ("Your area in Gbagada has its own code.", "I live in Gbagada", None),  # from the question
+        ("Each part has a meaning. The state comes first.", "", None),  # sentence-initial capitals
+        ("Postcode tana da sassa biyar a Najeriya.", "", None),  # allowlisted country name
+    ],
+)
+def test_guard_capitalised_words(answer: str, question: str, reason: str | None) -> None:
+    assert guard(answer, FACTS["en"], "en", question) == reason

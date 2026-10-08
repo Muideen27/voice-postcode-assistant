@@ -19,14 +19,26 @@ LOW_CONFIDENCE = 0.5  # below this the orchestrator treats the intent as "other"
 
 INTENT_PARAMS: dict[str, Any] = {"temperature": 0, "max_tokens": 80, "repetition_penalty": 1.12}
 
+FAQ_IDS = (
+    "what_is",
+    "parts",
+    "since_when",
+    "get_mine",
+    "check_one",
+    "place_name_no",
+    "privacy",
+    "who_built",
+)
+
 INTENT_SCHEMA: dict[str, Any] = {
     "type": "object",
     "properties": {
         "intent": {"type": "string", "enum": list(INTENTS)},
+        "faq_id": {"type": "string", "enum": [*FAQ_IDS, "none"]},
         "confidence": {"type": "number", "minimum": 0, "maximum": 1},
         "places_mentioned": {"type": "array", "items": {"type": "string"}},
     },
-    "required": ["intent", "confidence", "places_mentioned"],
+    "required": ["intent", "faq_id", "confidence", "places_mentioned"],
     "additionalProperties": False,
 }
 
@@ -37,19 +49,32 @@ INTENT_SYSTEM = (
     "Intents:\n"
     "- get_my_postcode: asks for their own postcode or the postcode of where they live\n"
     "- validate_postcode: asks if a postcode is real, valid or correct\n"
-    "- explain_postcode: asks what a postcode is, what its parts mean, or how it works\n"
+    "- explain_postcode: asks a question about postcodes or about this assistant\n"
     "- greeting: only greets or thanks, with no request\n"
     "- other: anything else\n"
-    "Reply with JSON only: intent, confidence (0 to 1) and places_mentioned (place names in the message, "
-    "copied as written; empty list if none)."
+    'faq_id, only when intent is explain_postcode (otherwise "none"):\n'
+    "- what_is: what a postcode is\n"
+    "- parts: what the parts or letters/numbers of a postcode mean\n"
+    "- since_when: when the new postcodes started\n"
+    "- get_mine: how to get one's postcode\n"
+    "- check_one: how to check a postcode\n"
+    "- place_name_no: whether a street, area or place name is enough to get a postcode\n"
+    "- privacy: what personal data is kept\n"
+    "- who_built: who made this assistant\n"
+    "- none: any other question\n"
+    "Reply with JSON only: intent, faq_id, confidence (0 to 1) and places_mentioned (place names in the "
+    "message, copied as written; empty list if none)."
 )
 
 
-def _shot(intent: str, confidence: float, places: list[str] | None = None) -> str:
-    return json.dumps({"intent": intent, "confidence": confidence, "places_mentioned": places or []})
+def _shot(intent: str, confidence: float, places: list[str] | None = None, faq_id: str = "none") -> str:
+    return json.dumps(
+        {"intent": intent, "faq_id": faq_id, "confidence": confidence, "places_mentioned": places or []}
+    )
 
 
-# Two or more per language, one noisy ASR-style transcript each. Never reuse these as eval cases.
+# At least two per language, one noisy ASR-style transcript each, and every faq_id at least once.
+# Never reuse these as eval cases (tests/test_llm.py checks evals/cases.py).
 INTENT_FEW_SHOT: list[tuple[str, str]] = [
     # English
     (
@@ -57,19 +82,30 @@ INTENT_FEW_SHOT: list[tuple[str, str]] = [
         _shot("get_my_postcode", 0.95, ["Ikeja", "Lagos"]),
     ),
     ("good morning how is your family", _shot("greeting", 0.95)),
-    ("what does the GN part of my post code mean", _shot("explain_postcode", 0.9)),
+    ("what does the GN part of my post code mean", _shot("explain_postcode", 0.9, faq_id="parts")),
+    ("who is behind this app", _shot("explain_postcode", 0.9, faq_id="who_built")),
+    ("how do i confirm a postcode somebody sent me", _shot("explain_postcode", 0.85, faq_id="check_one")),
     # Yoruba
     ("Ẹ jọ̀wọ́, ṣé pósíkòdì tí wọ́n fún mi tọ̀nà?", _shot("validate_postcode", 0.9)),
     ("e kaaro ma se daadaa ni", _shot("greeting", 0.9)),
     ("mo fe mo posikodi ile mi ni ojota", _shot("get_my_postcode", 0.9, ["ojota"])),
+    ("Ṣé ẹ ń tọ́jú nọ́mbà fóònù mi?", _shot("explain_postcode", 0.9, faq_id="privacy")),
+    ("bawo ni mo se le gba posikodi temi", _shot("explain_postcode", 0.85, faq_id="get_mine")),
     # Hausa
-    ("Don Allah, menene ma'anar sassan postcode?", _shot("explain_postcode", 0.9)),
+    ("Don Allah, menene ma'anar sassan postcode?", _shot("explain_postcode", 0.9, faq_id="parts")),
     ("ina son sanin lamba gidan waya na a kano", _shot("get_my_postcode", 0.9, ["kano"])),
     ("sannu da aiki", _shot("greeting", 0.95)),
+    ("menene postcode ma", _shot("explain_postcode", 0.85, faq_id="what_is")),
+    (
+        "Idan na ba ka sunan unguwata, za ka san postcode dina?",
+        _shot("explain_postcode", 0.9, faq_id="place_name_no"),
+    ),
     # Igbo
     ("Biko, kedu postcode ụlọ m? Ana m ebi n'Enugu.", _shot("get_my_postcode", 0.95, ["Enugu"])),
     ("biko postcode a o ziri ezi", _shot("validate_postcode", 0.85)),
     ("kedu ka i mere", _shot("greeting", 0.9)),
+    ("kedu ihe LA putara na postcode", _shot("explain_postcode", 0.85, faq_id="parts")),
+    ("Oleelee mgbe ha malitere postcode ọhụrụ a?", _shot("explain_postcode", 0.9, faq_id="since_when")),
 ]
 
 

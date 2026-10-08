@@ -80,7 +80,8 @@ Versions below are what Modal's mirror installed in our working images on 4 to 8
 
 | Item | Choice | Constraint |
 |---|---|---|
-| Web page | Plain HTML + vanilla JS + inline CSS, no framework, no build step | Total transfer < 50 KB before audio |
+| Web page | Plain HTML + vanilla JS + inline CSS, no framework, no build step | HTML + CSS + JS < 50 KB; fonts < 120 KB total |
+| Fonts | Self-hosted woff2 in `web/fonts/`, built by `scripts/build_fonts.py` | `Cache-Control: public, max-age=31536000, immutable` |
 | Audio capture | `MediaRecorder` (Opus/WebM on Android, MP4/AAC on iOS) | Max 20 s per recording |
 | Location | `navigator.geolocation.getCurrentPosition`, `enableHighAccuracy: true`, timeout 15 s | HTTPS only |
 | Browsers supported | Chrome for Android 100+, Samsung Internet 20+, Safari iOS 15+ | Test on one low-end Android phone |
@@ -96,13 +97,24 @@ Versions below are what Modal's mirror installed in our working images on 4 to 8
 | Bricolage Grotesque 500/700 (display) | ṣ ɓ ɗ ƙ ƴ ṅ | uppercase Ṣ Ɓ Ɗ Ƙ Ƴ Ṅ |
 | JetBrains Mono 500/700 (codes) | ṣ ɓ ɗ ƙ ƴ ṅ | uppercase Ṣ Ɓ Ɗ Ƙ Ƴ Ṅ |
 
-All three have à á è é ì í ò ó ù ú ń and the combining grave/acute. Fix (when the page is built): keep the
-fonts; add one fallback `@font-face` restricted by `unicode-range` to exactly the missing code points
-above (plus U+0323 for the body font), listed after each family in its stack. No font swap.
+All three have à á è é ì í ò ó ù ú ń and the combining grave/acute. **Atkinson Hyperlegible Next** was
+checked as a replacement (Google Fonts subsets and the upstream google/fonts file): it misses the same
+letters, so the body font stays Atkinson Hyperlegible.
 
-**Open: transfer budget.** The prototype's fonts are ~200 KB on first load (Atkinson ~53 KB, Bricolage
-variable ~120 KB incl. latin-ext/vietnamese, JetBrains Mono ~26 KB), against "< 50 KB before audio".
-Needs a decision before the page is built (e.g. budget the HTML/JS/CSS only, or subset/self-host).
+**Self-hosted fonts** (`web/fonts/`, built 8 Oct 2026 by `scripts/build_fonts.py`, 117.4 KB total):
+
+| File | Font, weights | Subset | Size |
+|---|---|---|---|
+| `atkinson-400.woff2`, `atkinson-700.woff2` | Atkinson Hyperlegible 400, 700 | Latin, Latin Ext. Additional, ń ɓ ɗ ƙ ƴ (+caps), combining marks, punctuation | 10.0 + 10.2 KB |
+| `bricolage.woff2` | Bricolage Grotesque, variable wght 500–700, opsz 12–48 | same | 60.1 KB |
+| `jetbrains-500.woff2`, `jetbrains-700.woff2` | JetBrains Mono 500, 700 | ASCII + "·" (it only renders codes) | 16.2 + 16.3 KB |
+| `fallback-sans.woff2` | Noto Sans, wght 400–700 | only ẹ ọ ṣ ɓ ɗ ƙ ƴ ị ụ ṅ, their capitals, U+0300/0301/0323 | 4.7 KB |
+
+- Bricolage's optical-size axis is limited to 12–48 (the prototype's largest display text is 38 px), so it
+  renders the same as the prototype's 12–96 range; this saves 9 KB.
+- Fallback: `fallback-sans` is declared as a second `@font-face` for the body and display families with
+  `unicode-range` set to exactly its letters, so it is used only where Atkinson/Bricolage lack a letter.
+  Coverage checked after subsetting: no required letter is missing. No fallback is needed for mono.
 
 ---
 
@@ -122,11 +134,14 @@ Needs a decision before the page is built (e.g. budget the HTML/JS/CSS only, or 
 | Path | Warm | Cold (GPU asleep) | Hard limit |
 |---|---|---|---|
 | Location → postcode reply | ≤ 3 s | ≤ 3 s (no GPU used) | 10 s |
-| Text → reply | ≤ 5 s | up to 180 s | 180 s |
-| Voice (≤ 15 s clip) → reply | ≤ 12 s | up to 180 s | 180 s |
+| Text → reply | ≤ 5 s | ≤ 20 s, then safety net or `warming_up` | 20 s per LLM call |
+| Voice (≤ 15 s clip) → reply | ≤ 12 s | ASR cold start + 20 s LLM limit | see §3.3 |
 
-Cold GPU on the web: the page shows a localised progress message ("Starting up, this can take up to
-3 minutes the first time") and keeps waiting up to 180 s. After 180 s it shows a localised retry message.
+Cold LLM GPU (cold start measured at ~2 min): the LLM call times out after **20 s**. The orchestrator logs
+`llm_status=timeout`, applies the keyword safety net, and if the net finds nothing answers with the
+`warming_up` template ("still waking up, try again in a minute"). To avoid most cold turns:
+`GET /api/warm` (called once by the page on load) starts the GPU in the background, and pilot sessions run
+`scripts/warm.sh <minutes>`, which sets `min_containers=1` for that window only (default stays 0).
 
 ---
 
@@ -187,14 +202,16 @@ Example expected output for a location in Ikeja (en):
 
 - Endpoint: `POST {NATLAS_URL}/v1/chat/completions` (`Authorization: Bearer NATLAS_API_KEY`), model
   `natlas`, `temperature: 0`, `max_tokens: 80`, `repetition_penalty: 1.12`, `response_format: json_schema`.
-  Prompt: system prompt naming the user's language + 12 few-shot pairs (3 per language, one noisy ASR
+  Prompt: system prompt naming the user's language + few-shot pairs (≥ 2 per language, one noisy ASR
   transcript each) in `app/services/prompts.py`.
-- Timeout per LLM call: 150 s read, 10 s connect, **no retry inside a user turn**. The first call of a turn
-  absorbs a cold start; a second call in the same turn is warm, so a cold turn still fits the 180 s budget.
+- Timeout per LLM call: **20 s** read, 5 s connect, **no retry inside a user turn** (see §2 cold start).
 - Output (always schema-valid):
 ```json
-{"intent":"get_my_postcode","confidence":0.92,"places_mentioned":["Ibeju-Lekki","Lagos"]}
+{"intent":"explain_postcode","faq_id":"place_name_no","confidence":0.9,"places_mentioned":[]}
 ```
+- `faq_id` ∈ `what_is | parts | since_when | get_mine | check_one | place_name_no | privacy | who_built |
+  none`; meaningful only when `intent` is `explain_postcode` (the client sets it to null otherwise).
+  Few-shot: 20 pairs, every language and every `faq_id` covered; eval cases stay held out.
 - `confidence` ∈ [0, 1]; below **0.5** the orchestrator treats the intent as `other` (then the net).
   `places_mentioned` is never used as a fact. Unparseable or off-schema output → `LlmError("bad_json")`;
   timeout → `timeout`; HTTP/transport errors → `error` (logged as `llm_status`).
@@ -213,7 +230,17 @@ Example expected output for a location in Ikeja (en):
 - Acceptance: on `evals/natlas_final_test.py` (40 held-out cases, 10 per language, `evals/cases.py`),
   routed intent accuracy (after regex + safety net) **≥ 85% overall**; 100% schema-valid; warm p50 ≤ 3 s.
 
-### 3.5 LLM: reply (only for `explain_postcode` and the wording around a verified result)
+### 3.5 Explain: FAQ routing (production) and generate mode (off)
+
+`EXPLAIN_MODE=faq` (default, production): no free-text generation. `explain_postcode` + `faq_id` → the
+template `faq_<faq_id>` (en final; yo/ha/ig reviewed via `docs/review/faq_<lang>.csv`). Reply kinds:
+`get_mine`, `place_name_no` → `ask_location` (location button); `check_one` → `ask_code`; others → `answer`
+with feedback. `faq_id` none → `explain_fallback` + menu (`reply_kind = template_fallback`). Each FAQ answer
+is ≤ 60 words, facts only from the fact sheet (privacy answer from the privacy rules); `faq_who_built`
+carries the N-ATLaS attribution and "Postcode data from the Nigeria Postcode API". Log `reply_kind =
+faq_<faq_id>`. Acceptance: FAQ routing eval (20 cases, 5 per language) reported in `evals/results.md`.
+
+`EXPLAIN_MODE=generate` (kept for evals, **off in production**): the LLM answers from the fact sheet.
 
 - `temperature: 0.1`, `max_tokens: 200`; language stated in system prompt and at the end of the user turn;
   facts under `FACTS (use only these)` in the user turn.
@@ -222,10 +249,12 @@ Example expected output for a location in Ikeja (en):
 - FACTS = `data/fact_sheet_<lang>.md` without its `review:` front matter. Allowed content only: the format
   AA-99-H77-BB-55 and its parts, the example LA-11-A12-GN-01, live since 1 Oct 2026, get = share location,
   check = say or type it, no postcode from a place name alone. yo/ha/ig sheets are reviewed through the same
-  CSV flow (row key `fact_sheet`); `review: done` is a pilot gate.
+  The fact sheets are the source for writing the FAQ templates; they are sent to the model only in
+  generate mode and are no longer in the review sheets or a pilot gate.
 - Guard (`app.services.llm.guard`): discard the reply if it has a URL or domain, a postcode not in FACTS,
-  more than 120 words, a number not in FACTS, a Nigerian place name not in FACTS, or (yo/ha/ig) more than
-  30% common English words. The orchestrator then sends the `explain_fallback` template and logs
+  more than 120 words, a number not in FACTS, a Nigerian place name not in FACTS, a capitalised word that
+  is not sentence-initial and not in FACTS, the user's question or a small allowlist (language and country
+  names, LGA, NIN, months), or (yo/ha/ig) more than 30% common English words. The orchestrator then sends the `explain_fallback` template and logs
   `reply_kind = "template_fallback"`. The orchestrator re-checks URLs and postcodes (second guard).
 - Acceptance: no invented postcode or place name in any explain answer in the evals.
 
@@ -258,7 +287,9 @@ call level 1, so it signals a config bug); `429` → wait and retry once after 2
 
 | Route | Request | Response |
 |---|---|---|
-| `GET /` | none | `index.html` (< 50 KB) |
+| `GET /` | none | `index.html` (HTML + CSS + JS < 50 KB) |
+| `GET /fonts/<file>.woff2` | none | font file, `Cache-Control: public, max-age=31536000, immutable` |
+| `GET /api/warm` | none | `204` at once; starts a 1-token LLM request in the background (not awaited) so the GPU wakes while the user picks a language. Called once per page load. |
 | `POST /api/language` | `{"session":"<uuid>","lang":"yo"}` | `Reply` (`welcome` with consent for a new user, else `menu`) |
 | `POST /api/consent` | `{"session","agree":true\|false}` | `Reply` (`ask_knew_before`, or `declined`) |
 | `POST /api/location` | `{"session","lat","lng","accuracy_m"}` | `Reply` (postcode) |
@@ -371,6 +402,10 @@ The Twilio echo prototype is kept in `archive/twillo_echo.py`.
 - 2026-10-08: LLM contracts: intent schema adds `confidence` (< 0.5 → other); 150 s per-call timeout, no
   retry; fact sheet content rules; guard rules (URL, postcode, number, place, length, wrong language).
   Eval acceptance: ≥ 85% routed intent accuracy on 40 held-out cases.
+- 2026-10-08: Explain becomes FAQ routing (`faq_id` in the intent schema, 8 FAQ templates, `EXPLAIN_MODE`
+  default `faq`; generate mode kept, off). Guard rejects unknown capitalised words. LLM timeout 20 s with
+  `warming_up` template; `GET /api/warm`; `scripts/warm.sh`. Fonts self-hosted and subset (117.4 KB);
+  budget HTML+CSS+JS < 50 KB, fonts < 120 KB. Fact sheets out of the review flow.
 - 2026-10-08: Web page contract: match `web/design/prototype.html` exactly (phone screen only). Glyph
   coverage table and unicode-range fallback rule. Open question on font transfer size vs the 50 KB budget.
   30-minute TTL for unconsented sessions (implemented in `main.py`).

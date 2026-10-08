@@ -2,6 +2,9 @@
 
 One call per request, no retry inside a user turn. Failures raise LlmError(kind), which the orchestrator
 logs as llm_status and turns into the keyword safety net (intent) or the template answer (explain).
+
+Production uses FAQ routing (EXPLAIN_MODE=faq): the intent call returns a faq_id and the answer is a
+reviewed template. NatlasExplain (free-text generation + guard) is kept for EXPLAIN_MODE=generate only.
 """
 
 import json
@@ -17,9 +20,10 @@ from app.services import prompts
 from app.services.interfaces import IntentResult, LlmError
 from app.services.postcode import POSTCODE_RE, normalise
 
-# Web budget: a cold turn must answer within 180 s (SPEC §2). The first call of a turn absorbs the cold
-# start; any second call in the same turn is warm.
-TIMEOUT = httpx.Timeout(150.0, connect=10.0)
+# Per-turn budget (SPEC §2): 20 s. A cold GPU takes ~2 min, so a cold turn times out and the orchestrator
+# answers with the keyword safety net or the warming_up template; /api/warm starts the GPU on page load.
+TIMEOUT = httpx.Timeout(20.0, connect=5.0)
+WARM_TIMEOUT = httpx.Timeout(600.0, connect=10.0)  # warm() waits out a full cold start in the background
 GUARD_MAX_WORDS = 120
 
 _URL_RE = re.compile(r"https?://|www\.|\b[\w-]+\.(?:com|ng|org|net|gov)\b", re.IGNORECASE)
@@ -41,6 +45,13 @@ _ENGLISH_WORDS = set(
     "the is and your you of to a in it for are this that we can with on be by or has have what how "
     "postcodes not from where".split()
 )
+_TOKEN_RE = re.compile(r"[^\W\d_][\w'’-]*")
+_SENTENCE_START = set(".!?:#-•*(\n")
+# Capitalised words always allowed in an answer: language and country names, abbreviations, months.
+CAPITALISED_ALLOWLIST = set(
+    "i english yoruba yorùbá hausa igbo nigeria nigerian nigeria's naijiria najeriya nàìjíríà naịjirịa "
+    "lga nin ok api n-atlas october oktoba ọktoba".split()
+)
 
 
 def fold(text: str) -> str:
@@ -48,7 +59,21 @@ def fold(text: str) -> str:
     return "".join(c for c in decomposed if not unicodedata.combining(c))
 
 
-def guard(answer: str, facts: str, lang: Lang) -> str | None:
+def _unknown_capitalised(answer: str, allowed_text: str) -> str | None:
+    """First capitalised word that is not at a sentence start and not in FACTS, the question or the allowlist."""
+    vocabulary = {fold(t) for t in _TOKEN_RE.findall(allowed_text)} | {fold(w) for w in CAPITALISED_ALLOWLIST}
+    for match in _TOKEN_RE.finditer(answer):
+        token = match.group(0)
+        if not token[0].isupper() or fold(token) in vocabulary:
+            continue
+        before = answer[: match.start()].rstrip(" \t\"“'‘")
+        if not before or before[-1] in _SENTENCE_START:
+            continue  # sentence-initial capital
+        return token
+    return None
+
+
+def guard(answer: str, facts: str, lang: Lang, question: str = "") -> str | None:
     """Reason the answer must not be shown, or None if it passes. Facts come only from FACTS."""
     if _URL_RE.search(answer):
         return "url"
@@ -62,6 +87,8 @@ def guard(answer: str, facts: str, lang: Lang) -> str | None:
         return "number_not_in_facts"
     if set(_PLACE_RE.findall(fold(answer))) - set(_PLACE_RE.findall(fold(facts))):
         return "place_not_in_facts"
+    if _unknown_capitalised(answer, f"{facts}\n{question}"):
+        return "unknown_capitalised_word"
     if lang != "en":
         tokens = [w for w in _WORD_RE.findall(answer.lower()) if len(w) > 1]
         if tokens and sum(w in _ENGLISH_WORDS for w in tokens) / len(tokens) > 0.3:
@@ -90,6 +117,15 @@ class NatlasClient:
     @classmethod
     def from_env(cls) -> "NatlasClient":
         return cls(os.environ["NATLAS_URL"], os.environ["NATLAS_API_KEY"])
+
+    async def warm(self) -> None:
+        """Wake the GPU: one 1-token request with a long timeout. Run it as a background task (/api/warm);
+        never inside a user turn. Errors are swallowed: warming is best effort."""
+        payload = {"model": "natlas", "messages": [{"role": "user", "content": "hi"}], "max_tokens": 1}
+        try:
+            await self._http.post("/v1/chat/completions", json=payload, timeout=WARM_TIMEOUT)
+        except httpx.HTTPError as exc:
+            print(json.dumps({"event": "llm_warm_error", "error": type(exc).__name__}))
 
     async def aclose(self) -> None:
         await self._http.aclose()
@@ -123,15 +159,18 @@ class NatlasIntent:
         try:
             data = json.loads(content)
             intent = data["intent"]
+            faq_id = data.get("faq_id", "none")
             confidence = float(data.get("confidence", 1.0))
             places = data.get("places_mentioned") or []
         except (ValueError, KeyError, TypeError) as exc:
             raise LlmError("bad_json", content[:80]) from exc
-        if intent not in prompts.INTENTS or not isinstance(places, list):
+        valid_faq = faq_id in prompts.FAQ_IDS or faq_id == "none"
+        if intent not in prompts.INTENTS or not valid_faq or not isinstance(places, list):
             raise LlmError("bad_json", content[:80])
         return IntentResult(
             intent=intent,
             confidence=min(max(confidence, 0.0), 1.0),
+            faq_id=faq_id if intent == "explain_postcode" and faq_id != "none" else None,
             places_mentioned=tuple(str(p) for p in places),
         )
 
@@ -147,7 +186,7 @@ class NatlasExplain:
     async def explain(self, question: str, lang: Lang) -> str | None:
         facts = self._facts[lang]
         answer = await self._client.chat(prompts.explain_payload(question, lang, facts))
-        self.last_guard_reason = guard(answer, facts, lang)
+        self.last_guard_reason = guard(answer, facts, lang, question)
         if self.last_guard_reason:
             print(json.dumps({"event": "llm_guard_reject", "reason": self.last_guard_reason, "lang": lang}))
             return None

@@ -43,5 +43,14 @@
   "feedback_question": "Did this help?",
   "feedback_yes": "Yes, it helped",
   "feedback_no": "No",
-  "thanks": "Thank you for your feedback!"
+  "thanks": "Thank you for your feedback!",
+  "faq_what_is": "A postcode is a code with five parts: state, Local Government Area (LGA), district, area and unit. It is written like AA-99-H77-BB-55, for example LA-11-A12-GN-01. Nigeria's new postcodes have been live since 1 October 2026.",
+  "faq_parts": "A postcode has five parts. In LA-11-A12-GN-01: LA is the state, 11 is the Local Government Area (LGA), A12 is the district, GN is the area and 01 is the unit.",
+  "faq_since_when": "Nigeria's new postcodes have been live since 1 October 2026.",
+  "faq_get_mine": "To get your postcode, tap \"Get my postcode\" to share your location. We look up the postcode for where you are.",
+  "faq_check_one": "To check a postcode, say it or type it, for example LA 11 A12 GN 01. We tell you if it is valid.",
+  "faq_place_name_no": "We cannot get your postcode from a street or place name. Tap \"Get my postcode\" to share your location instead.",
+  "faq_privacy": "We do not ask for your name, phone number or NIN. Your location is used once to find your postcode and is not kept. Voice notes are deleted after we read them.",
+  "faq_who_built": "This assistant was built by an independent developer for the National AI Innovation Challenge 2026. N-ATLaS is an initiative of the Federal Ministry of Communications, Innovation and Digital Economy, and powered by Awarri Technologies. Postcode data from the Nigeria Postcode API.",
+  "warming_up": "The assistant is still waking up. Please try again in a minute."
 }

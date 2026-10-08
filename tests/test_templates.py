@@ -9,7 +9,6 @@ import pytest
 from app.events import LANGS
 
 TEMPLATES = Path(__file__).resolve().parents[1] / "app" / "templates"
-DATA = Path(__file__).resolve().parents[1] / "data"
 ATTRIBUTION = (
     "N-ATLaS is an initiative of the Federal Ministry of Communications, Innovation and Digital Economy, "
     "and powered by Awarri Technologies."
@@ -67,8 +66,25 @@ def test_pilot_gate_all_strings_reviewed(lang: str) -> None:
     assert load(lang)["_todo_review"] == [], f"{lang}: native-speaker review still pending"
 
 
-@pytest.mark.pilot
-@pytest.mark.parametrize("lang", ["yo", "ha", "ig"])
-def test_pilot_gate_fact_sheet_reviewed(lang: str) -> None:
-    first_lines = (DATA / f"fact_sheet_{lang}.md").read_text(encoding="utf-8").splitlines()[:3]
-    assert first_lines == ["---", "review: done", "---"], f"{lang}: fact sheet review still pending"
+def test_every_faq_id_has_a_template() -> None:
+    from app.services.prompts import FAQ_IDS
+
+    assert {k for k in strings("en") if k.startswith("faq_")} == {f"faq_{i}" for i in FAQ_IDS}
+
+
+def test_english_faq_answers_are_at_most_60_words() -> None:
+    for key, text in strings("en").items():
+        if key.startswith("faq_"):
+            assert len(text.split()) <= 60, key
+
+
+@pytest.mark.parametrize("lang", LANGS)
+def test_who_built_has_attribution_and_data_source(lang: str) -> None:
+    text = strings(lang)["faq_who_built"]
+    assert ATTRIBUTION in text and "Nigeria Postcode API" in text
+
+
+@pytest.mark.parametrize("lang", LANGS)
+def test_place_name_no_points_to_the_location_button(lang: str) -> None:
+    t = strings(lang)
+    assert f'"{t["btn_location"]}"' in t["faq_place_name_no"]

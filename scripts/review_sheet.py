@@ -4,7 +4,8 @@ Usage:
     python scripts/review_sheet.py            # yo, ha, ig
     python scripts/review_sheet.py yo         # one language
 
-Columns: key, english, draft, reviewer_text (empty), notes. The file is UTF-8 with a BOM so Excel and
+Two sheets per language: <lang>.csv (all strings except the FAQ answers) and faq_<lang>.csv (faq_* only,
+a short separate sheet). Columns: key, english, draft, reviewer_text (empty), notes. The file is UTF-8 with a BOM so Excel and
 Google Sheets show Yorùbá/Hausa/Igbo letters correctly. Read it back with scripts/apply_review.py.
 """
 
@@ -16,9 +17,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 TEMPLATES = ROOT / "app" / "templates"
-DATA = ROOT / "data"
 OUT = ROOT / "docs" / "review"
-FACT_SHEET_KEY = "fact_sheet"  # one extra row: the whole data/fact_sheet_<lang>.md while `review: pending`
 LANGS = ("yo", "ha", "ig")
 COLUMNS = ("key", "english", "draft", "reviewer_text", "notes")
 BUTTON_KEYS = {
@@ -49,6 +48,10 @@ def note_for(key: str, english: str) -> str:
         )
     if key in BUTTON_KEYS or key.startswith("btn_"):
         notes.append("Button label: keep it short.")
+    if key.startswith("faq_"):
+        notes.append("Answer to a common question. At most 60 words. Add no new facts, numbers or places.")
+    if key == "faq_who_built":
+        notes.append("Keep the N-ATLaS sentence in English exactly, and the name 'Nigeria Postcode API'.")
     if key.startswith("seg_"):
         notes.append('Shown after a code, e.g. "11 = <this text>".')
     if "LA 11 A12 GN 01" in english:
@@ -58,43 +61,31 @@ def note_for(key: str, english: str) -> str:
     return " ".join(notes)
 
 
-def split_fact_sheet(text: str) -> tuple[str, str]:
-    """(review status, body) of a fact sheet file with `---\nreview: <status>\n---` front matter."""
-    _, front, body = text.split("---\n", 2)
-    status = front.split("review:", 1)[1].strip()
-    return status, body.strip()
-
-
 def write_sheet(
-    lang: str, templates_dir: Path = TEMPLATES, out_dir: Path = OUT, data_dir: Path = DATA
+    lang: str,
+    templates_dir: Path = TEMPLATES,
+    out_dir: Path = OUT,
+    faq: bool = False,
 ) -> tuple[Path, int]:
+    """docs/review/<lang>.csv (all keys except faq_*) or, with faq=True, docs/review/faq_<lang>.csv."""
     en = json.loads((templates_dir / "en.json").read_text(encoding="utf-8"))
     draft = json.loads((templates_dir / f"{lang}.json").read_text(encoding="utf-8"))
     out_dir.mkdir(parents=True, exist_ok=True)
-    path = out_dir / f"{lang}.csv"
-    keys = draft["_todo_review"]
-    rows = [[key, en[key], draft[key], "", note_for(key, en[key])] for key in keys]
-
-    status, body = split_fact_sheet((data_dir / f"fact_sheet_{lang}.md").read_text(encoding="utf-8"))
-    if status == "pending":
-        _, en_body = split_fact_sheet((data_dir / "fact_sheet_en.md").read_text(encoding="utf-8"))
-        note = (
-            "The facts the assistant may use when explaining postcodes. Keep the Markdown (# and - lines), "
-            "every code (AA-99-H77-BB-55, LA-11-A12-GN-01) and the date exactly. Add no new facts or numbers."
-        )
-        rows.append([FACT_SHEET_KEY, en_body, body, "", note])
-
+    path = out_dir / (f"faq_{lang}.csv" if faq else f"{lang}.csv")
+    keys = [k for k in draft["_todo_review"] if k.startswith("faq_") == faq]
     with path.open("w", encoding="utf-8-sig", newline="") as f:
         writer = csv.writer(f)
         writer.writerow(COLUMNS)
-        writer.writerows(rows)
-    return path, len(rows)
+        for key in keys:
+            writer.writerow([key, en[key], draft[key], "", note_for(key, en[key])])
+    return path, len(keys)
 
 
 def main(argv: list[str]) -> None:
     for lang in argv or LANGS:
-        path, rows = write_sheet(lang)
-        print(f"{path.relative_to(ROOT)}  {rows} rows")
+        for faq in (False, True):
+            path, rows = write_sheet(lang, faq=faq)
+            print(f"{path.relative_to(ROOT)}  {rows} rows")
 
 
 if __name__ == "__main__":

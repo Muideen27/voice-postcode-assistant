@@ -1,14 +1,16 @@
-"""Live N-ATLaS evals: intent (40 cases) and explain (12 cases). Uses app/services/prompts.py and llm.py
-directly, so the evals always test the exact prompts the app sends.
+"""Live N-ATLaS evals: intent (40 cases), FAQ routing (20 cases) and, for EXPLAIN_MODE=generate only,
+free-text explain (12 cases). Uses app/services/prompts.py, llm.py and the orchestrator's resolve_intent
+directly, so the evals always test the exact prompts and routing the app uses.
 
 Setup:
     export NATLAS_URL=https://muideen27--natlas-serve-serve.modal.run
     export NATLAS_API_KEY=$(cat natlas_api_key.txt)
 
 Usage:
-    python evals/natlas_final_test.py            # health (cold start timing), intent, explain
+    python evals/natlas_final_test.py            # health (cold start timing), intent, faq
     python evals/natlas_final_test.py intent
-    python evals/natlas_final_test.py explain
+    python evals/natlas_final_test.py faq
+    python evals/natlas_final_test.py explain    # generate mode (off in production)
 
 Writes evals/runs/<UTC timestamp>.json with every input, output, status and latency. Record the summary
 in evals/results.md (with the commit), plus your language-correctness judgement for explain answers.
@@ -32,7 +34,7 @@ from app.orchestrator import resolve_intent  # noqa: E402
 from app.services import prompts  # noqa: E402
 from app.services.interfaces import LlmError  # noqa: E402
 from app.services.llm import NatlasClient, NatlasIntent, guard  # noqa: E402
-from evals.cases import EXPLAIN_CASES, INTENT_CASES  # noqa: E402
+from evals.cases import EXPLAIN_CASES, FAQ_CASES, FAQ_EQUIVALENT_INTENTS, INTENT_CASES  # noqa: E402
 
 RUNS = ROOT / "evals" / "runs"
 
@@ -71,6 +73,7 @@ async def run_intent(client: NatlasClient) -> dict[str, Any]:
                     "text": text,
                     "expected": expected,
                     "llm_intent": result.intent if result else None,
+                    "faq_id": result.faq_id if result else None,
                     "confidence": result.confidence if result else None,
                     "llm_status": status,
                     "routed_intent": routed,
@@ -99,6 +102,44 @@ def summarise_intent(rows: list[dict[str, Any]]) -> dict[str, Any]:
     return out
 
 
+async def run_faq(client: NatlasClient) -> dict[str, Any]:
+    service = NatlasIntent(client)
+    rows = []
+    for lang, cases in FAQ_CASES.items():
+        for text, expected in cases:
+            start = time.perf_counter()
+            result, status = None, "ok"
+            try:
+                result = await service.classify(text, lang)  # type: ignore[arg-type]
+            except LlmError as exc:
+                status = exc.kind
+            ms = round((time.perf_counter() - start) * 1000)
+            routed = resolve_intent(text, result)
+            faq_id = result.faq_id if result and routed == "explain_postcode" else None
+            ok = faq_id == expected or routed == FAQ_EQUIVALENT_INTENTS.get(expected)
+            rows.append(
+                {
+                    "lang": lang,
+                    "text": text,
+                    "expected_faq": expected,
+                    "llm_intent": result.intent if result else None,
+                    "faq_id": result.faq_id if result else None,
+                    "routed_intent": routed,
+                    "llm_status": status,
+                    "ok": ok,
+                    "ms": ms,
+                }
+            )
+            print(
+                f"[faq {lang}] {'PASS' if ok else 'FAIL'} routed={routed} faq={faq_id} want={expected}  {text[:60]}"
+            )
+    out: dict[str, Any] = {}
+    for lang in [*FAQ_CASES, "all"]:
+        subset = [r for r in rows if lang == "all" or r["lang"] == lang]
+        out[lang] = {"n": len(subset), "accuracy": round(sum(r["ok"] for r in subset) / len(subset), 3)}
+    return {"rows": rows, "summary": out}
+
+
 async def run_explain(client: NatlasClient) -> dict[str, Any]:
     facts = {lang: prompts.load_fact_sheet(lang) for lang in prompts.LANG_NAMES}
     rows = []
@@ -108,7 +149,7 @@ async def run_explain(client: NatlasClient) -> dict[str, Any]:
             answer, status, reason = None, "ok", None
             try:
                 answer = await client.chat(prompts.explain_payload(question, lang, facts[lang]))  # type: ignore[arg-type]
-                reason = guard(answer, facts[lang], lang)  # type: ignore[arg-type]
+                reason = guard(answer, facts[lang], lang, question)  # type: ignore[arg-type]
             except LlmError as exc:
                 status = exc.kind
             ms = round((time.perf_counter() - start) * 1000)
@@ -166,7 +207,10 @@ async def main(mode: str) -> None:
         if mode in ("all", "intent"):
             report["intent"] = await run_intent(client)
             report["intent_latency"] = latency(report["intent"]["rows"])
-        if mode in ("all", "explain"):
+        if mode in ("all", "faq"):
+            report["faq"] = await run_faq(client)
+            report["faq_latency"] = latency(report["faq"]["rows"])
+        if mode == "explain":
             report["explain"] = await run_explain(client)
             report["explain_latency"] = latency(report["explain"]["rows"])
     except httpx.HTTPError as exc:
@@ -179,12 +223,15 @@ async def main(mode: str) -> None:
     path = RUNS / f"{datetime.now(UTC).strftime('%Y%m%dT%H%M%SZ')}.json"
     path.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print("\nSUMMARY")
-    for key in ("health", "intent_latency", "explain_latency"):
+    for key in ("health", "intent_latency", "faq_latency", "explain_latency"):
         if key in report:
             print(f"  {key}: {report[key]}")
     if "intent" in report:
         for lang, s in report["intent"]["summary"].items():
             print(f"  intent {lang}: {s}")
+    if "faq" in report:
+        for lang, s in report["faq"]["summary"].items():
+            print(f"  faq {lang}: {s}")
     if "explain" in report:
         print(f"  explain: {report['explain']['summary']}")
     print(f"  written: {path.relative_to(ROOT)}")

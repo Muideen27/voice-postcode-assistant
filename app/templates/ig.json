@@ -42,7 +42,16 @@
     "feedback_no",
     "thanks",
     "decline_button",
-    "ask_code"
+    "ask_code",
+    "faq_what_is",
+    "faq_parts",
+    "faq_since_when",
+    "faq_get_mine",
+    "faq_check_one",
+    "faq_place_name_no",
+    "faq_privacy",
+    "faq_who_built",
+    "warming_up"
   ],
   "language_name": "Igbo",
   "attribution": "N-ATLaS is an initiative of the Federal Ministry of Communications, Innovation and Digital Economy, and powered by Awarri Technologies.",
@@ -87,5 +96,14 @@
   "feedback_question": "Nke a ọ nyere gị aka?",
   "feedback_yes": "Ee, o nyere aka",
   "feedback_no": "Mba",
-  "thanks": "Daalụ maka nzaghachi gị!"
+  "thanks": "Daalụ maka nzaghachi gị!",
+  "faq_what_is": "Postcode bụ koodu nwere akụkụ ise: steeti, ọchịchị ime obodo (LGA), mpaghara, obodo nta na otu ụlọ. A na-ede ya otu a: AA-99-H77-BB-55, dịka LA-11-A12-GN-01. Postcode ọhụrụ nke Naịjirịa amalitela ọrụ kemgbe 1 Ọktoba 2026.",
+  "faq_parts": "Postcode nwere akụkụ ise. N'ime LA-11-A12-GN-01: LA bụ steeti, 11 bụ ọchịchị ime obodo (LGA), A12 bụ mpaghara, GN bụ obodo nta, 01 bụkwa otu ụlọ.",
+  "faq_since_when": "Postcode ọhụrụ nke Naịjirịa amalitela ọrụ kemgbe 1 Ọktoba 2026.",
+  "faq_get_mine": "Iji nweta postcode gị, pịa \"Nweta postcode m\" iji zipu ebe ị nọ. Anyị ga-achọta postcode nke ebe ị nọ.",
+  "faq_check_one": "Iji lelee postcode, kwuo ya ma ọ bụ dee ya, dịka LA 11 A12 GN 01. Anyị ga-agwa gị ma ọ ziri ezi.",
+  "faq_place_name_no": "Anyị enweghị ike ịchọta postcode gị site n'aha okporo ụzọ ma ọ bụ aha ebe. Pịa \"Nweta postcode m\" iji zipu ebe ị nọ.",
+  "faq_privacy": "Anyị anaghị ajụ aha gị, nọmba ekwentị gị ma ọ bụ NIN. A na-eji ebe ị nọ otu ugboro chọta postcode gị, anyị anaghị edebe ya. A na-ehichapụ ozi olu mgbe anyị gụchara ya.",
+  "faq_who_built": "Onye na-emepụta ngwanrọ nọọrọ onwe ya wuru onye enyemaka a maka National AI Innovation Challenge 2026. N-ATLaS is an initiative of the Federal Ministry of Communications, Innovation and Digital Economy, and powered by Awarri Technologies. Data postcode si na Nigeria Postcode API.",
+  "warming_up": "Onye enyemaka ka na-eteta. Biko nwaa ọzọ mgbe otu nkeji gasịrị."
 }

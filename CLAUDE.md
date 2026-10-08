@@ -72,7 +72,10 @@ One core, thin channel. All logic lives in the orchestrator; the channel only tr
    - `get_my_postcode` -> ask for location (place names alone cannot give a building code at L1)
    - `validate_postcode` -> regex-extract and normalise code -> `lookup(level=1)` -> valid / not found;
      no code in the text -> `ask_code` (offers both: send the code, or share location)
-   - `explain_postcode` -> LLM answers from `data/fact_sheet_<lang>.md` only
+   - `explain_postcode` -> FAQ routing: the intent call also returns `faq_id`; the reply is the reviewed
+     template `faq_<faq_id>` (`none` -> explain fallback + menu). No generated text in production
+     (`EXPLAIN_MODE=faq`; `generate` is kept for evals only).
+   - LLM timeout (20 s, cold GPU) -> keyword safety net; nothing found -> `warming_up` template
    - `greeting` / `other` / low confidence -> show menu again
 5. **Feedback** (1 = helpful, 2 = not) -> interaction log.
 
@@ -104,9 +107,10 @@ app/
   privacy.py           (exists) scrub()/for_storage(): PII removed + 300-char cap before storing text
 data/
   states.json          (exists) state codes -> names, documented codes only (11 so far)
-  fact_sheet_<lang>.md (exists) facts the LLM may use for explain_postcode (`review:` front matter)
+  fact_sheet_<lang>.md (exists) source facts for the faq_* templates; sent to the model only in generate mode
 web/index.html         (planned) low-bandwidth page, no frameworks; must match web/design/prototype.html
 web/design/prototype.html (exists) design source of truth (phone screen of the Prototype tab only)
+web/fonts/*.woff2      (exists) self-hosted subset fonts (117.4 KB), built by scripts/build_fonts.py
 deploy/
   natlas_serve.py      (exists) vLLM on L4, OpenAI-compatible, API-key protected
 tests/                 unit tests only: no network, run by `pytest -q`
@@ -128,10 +132,13 @@ scripts/
   record_postcode_fixtures.py (exists) refresh tests/fixtures/postcode from the live API
   review_sheet.py      (exists) templates -> docs/review/<lang>.csv for native-speaker review
   apply_review.py      (exists) filled docs/review/<lang>.csv -> templates, clears _todo_review
+  build_fonts.py       (exists) download + subset fonts into web/fonts/ (dev: fonttools, brotli)
+  warm.sh              (exists) keep one N-ATLaS GPU warm for a pilot window, then back to 0
 archive/
   twillo_echo.py       (archived) Twilio WhatsApp echo prototype, see Future work
 docs/                  submission PDFs (integration evidence, validation, technical docs, team)
-  review/<lang>.csv    (exists) review sheets for yo, ha, ig
+  review/<lang>.csv    (exists) review sheets for yo, ha, ig (all strings except faq_*)
+  review/faq_<lang>.csv (exists) short FAQ-answer review sheets
 SPEC.md                (exists) stack, pinned versions, constraints, component contracts
 pyproject.toml         (exists) ruff + pytest config
 requirements.txt       (exists) pinned app dependencies (vllm pinned in deploy/natlas_serve.py)
@@ -172,6 +179,8 @@ ruff check . && ruff format .
 modal serve app/main.py          # dev
 modal deploy app/main.py         # prod
 modal app logs <app-name> | tail -n 20
+scripts/warm.sh 90               # pilot session: min_containers=1 for 90 min, then back to 0 (Ctrl+C resets)
+scripts/warm.sh off              # reset min_containers to 0 now
 modal app stop <app-name>        # stop anything stuck retrying
 
 # audio prep for manual ASR tests
@@ -184,7 +193,9 @@ ffmpeg -i note.ogg -ar 16000 -ac 1 note.wav
 - Served model name `natlas`. Max context 4096 here (model card says ~8K).
 - `VLLM_USE_FLASHINFER_SAMPLER=0` is required (FlashInfer needs nvcc, which the image lacks).
   `--enforce-eager` keeps startup reliable.
-- Cold start takes minutes; warm calls take 2-7 s. Keep `min_containers=1` only during user sessions.
+- Cold start ~2 min (measured 134 s); warm intent calls ~2 s. Default `min_containers=0`; for pilot
+  sessions use `scripts/warm.sh <minutes>` (never edit the deploy file for this). The page calls
+  `GET /api/warm` on load. The app's LLM timeout is 20 s per call.
 - vLLM uses `repetition_penalty`; llama.cpp (laptop) uses `repeat_penalty`.
 
 **ASR**: `NCAIR1/Yoruba-ASR`, `NCAIR1/Hausa-ASR`, `NCAIR1/Igbo-ASR`, `NCAIR1/NigerianAccentedEnglish`.
@@ -216,6 +227,7 @@ Quality: Yoruba and Hausa good, Igbo weaker (label it beta). Place names come ou
 - **Web page contract.** The web page must match `web/design/prototype.html` exactly: colours, fonts, layout, spacing, components and screen order. Do not redesign it. Use only the phone screen from the Prototype tab (leave out the tabs, trace panel, dashboard and flow view). Keep its `:root` tokens (light and dark), its fonts (Bricolage Grotesque display, Atkinson Hyperlegible body, JetBrains Mono for codes) and its class names. Strings come from `app/templates`, data from `/api/*`. When the page is built, put 360 px screenshots of each screen next to the prototype's in `docs/ui-compare/`. Glyph gaps and the fallback rule are in SPEC.md §1 Front end.
 - **Template keys are frozen** (8 Oct, for the native-speaker review). Do not add, rename or remove a
   key without asking the user first. Changing English wording also needs the review sheets regenerated.
+  Approved exceptions so far: the 8 `faq_*` keys and `warming_up` (8 Oct).
 - Store user text only through `app.privacy.for_storage()` (scrubbed: numbers, phones, emails; capped at
   300 chars). Raw text may be used inside the turn (regex, intent) but never stored.
 - Language codes everywhere: `en`, `yo`, `ha`, `ig`.
@@ -282,3 +294,5 @@ account is locked. The Twilio echo prototype is kept in `archive/twillo_echo.py`
 - 2026-10-08: `web/design/prototype.html` is the design source of truth (web page contract above).
 - 2026-10-08: `prompts.py`, `llm.py` (guard), fact sheets (yo/ha/ig in the review flow), evals rebuilt on
   `prompts.py` with 40 + 12 held-out cases; results in `evals/results.md`.
+- 2026-10-08: FAQ routing replaces generated explain answers (`EXPLAIN_MODE=faq`). 20 s LLM timeout +
+  `warming_up`; `/api/warm`; `scripts/warm.sh`. Self-hosted subset fonts in `web/fonts/`.

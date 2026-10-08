@@ -42,7 +42,16 @@
     "feedback_no",
     "thanks",
     "decline_button",
-    "ask_code"
+    "ask_code",
+    "faq_what_is",
+    "faq_parts",
+    "faq_since_when",
+    "faq_get_mine",
+    "faq_check_one",
+    "faq_place_name_no",
+    "faq_privacy",
+    "faq_who_built",
+    "warming_up"
   ],
   "language_name": "Hausa",
   "attribution": "N-ATLaS is an initiative of the Federal Ministry of Communications, Innovation and Digital Economy, and powered by Awarri Technologies.",
@@ -87,5 +96,14 @@
   "feedback_question": "Wannan ya taimaka?",
   "feedback_yes": "Eh, ya taimaka",
   "feedback_no": "A'a",
-  "thanks": "Na gode da ra'ayinka!"
+  "thanks": "Na gode da ra'ayinka!",
+  "faq_what_is": "Postcode lamba ce mai sassa biyar: jiha, karamar hukuma (LGA), gunduma, unguwa da rukunin gini. Ana rubuta ta kamar haka: AA-99-H77-BB-55, misali LA-11-A12-GN-01. Sabbin postcode na Najeriya sun fara aiki tun 1 ga Oktoba 2026.",
+  "faq_parts": "Postcode tana da sassa biyar. A cikin LA-11-A12-GN-01: LA ita ce jiha, 11 karamar hukuma (LGA), A12 gunduma, GN unguwa, 01 kuma rukunin gini.",
+  "faq_since_when": "Sabbin postcode na Najeriya sun fara aiki tun daga 1 ga Oktoba 2026.",
+  "faq_get_mine": "Don samun postcode ɗinka, danna \"Samo postcode ɗina\" don aika wurinka. Za mu nemo postcode na inda kake.",
+  "faq_check_one": "Don duba postcode, faɗe ta ko ka rubuta ta, misali LA 11 A12 GN 01. Za mu gaya maka ko ingantacciya ce.",
+  "faq_place_name_no": "Ba za mu iya samun postcode ɗinka daga sunan titi ko sunan wuri ba. Danna \"Samo postcode ɗina\" don aika wurinka.",
+  "faq_privacy": "Ba mu tambayar sunanka, lambar wayarka ko NIN. Muna amfani da wurinka sau ɗaya kawai don nemo postcode ɗinka, ba ma ajiye shi. Ana goge saƙon murya bayan mun karanta shi.",
+  "faq_who_built": "Wani mai haɓaka manhaja mai zaman kansa ne ya gina wannan mataimaki don National AI Innovation Challenge 2026. N-ATLaS is an initiative of the Federal Ministry of Communications, Innovation and Digital Economy, and powered by Awarri Technologies. Bayanan postcode daga Nigeria Postcode API.",
+  "warming_up": "Mataimakin yana farkawa har yanzu. Don Allah ka sake gwadawa bayan minti ɗaya."
 }

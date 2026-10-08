@@ -14,6 +14,7 @@ AsrErrorKind = Literal["too_long", "bad_audio", "timeout", "unavailable"]
 class IntentResult:
     intent: Intent
     confidence: float | None = None  # below prompts.LOW_CONFIDENCE the orchestrator treats it as "other"
+    faq_id: str | None = None  # one of prompts.FAQ_IDS when intent is explain_postcode, else None
     places_mentioned: tuple[str, ...] = ()  # logged for analysis only; never used as a fact
 
 

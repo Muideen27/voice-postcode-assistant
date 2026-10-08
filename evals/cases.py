@@ -77,3 +77,38 @@ EXPLAIN_CASES: dict[str, list[str]] = {
         "Kemgbe ole ka postcode ọhụrụ ndị a malitere?",
     ],
 }
+
+# FAQ routing (EXPLAIN_MODE=faq): the 12 explain questions above plus 8 more, 5 per language, with the
+# expected faq_id. Scored by outcome: get_mine also counts as correct when the LLM says get_my_postcode
+# (same screen: ask for location), and check_one when it says validate_postcode (same screen: ask for code).
+FAQ_CASES: dict[str, list[tuple[str, str]]] = {
+    "en": [
+        (EXPLAIN_CASES["en"][0], "parts"),
+        (EXPLAIN_CASES["en"][1], "place_name_no"),
+        (EXPLAIN_CASES["en"][2], "since_when"),
+        ("Is my information kept when I use this?", "privacy"),
+        ("What exactly is a postcode?", "what_is"),
+    ],
+    "yo": [
+        (EXPLAIN_CASES["yo"][0], "parts"),
+        (EXPLAIN_CASES["yo"][1], "place_name_no"),
+        (EXPLAIN_CASES["yo"][2], "since_when"),
+        ("Kí ni pósíkòdì gan-an?", "what_is"),
+        ("Báwo ni mo ṣe lè ṣàyẹ̀wò bóyá pósíkòdì kan jẹ́ òótọ́?", "check_one"),
+    ],
+    "ha": [
+        (EXPLAIN_CASES["ha"][0], "parts"),
+        (EXPLAIN_CASES["ha"][1], "place_name_no"),
+        (EXPLAIN_CASES["ha"][2], "since_when"),
+        ("Wa ya ƙirƙiro wannan sabis ɗin?", "who_built"),
+        ("Ta yaya zan samu postcode ta?", "get_mine"),
+    ],
+    "ig": [
+        (EXPLAIN_CASES["ig"][0], "parts"),
+        (EXPLAIN_CASES["ig"][1], "place_name_no"),
+        (EXPLAIN_CASES["ig"][2], "since_when"),
+        ("Ị na-edebe ebe m nọ?", "privacy"),
+        ("Gịnị bụ postcode?", "what_is"),
+    ],
+}
+FAQ_EQUIVALENT_INTENTS = {"get_mine": "get_my_postcode", "check_one": "validate_postcode"}
