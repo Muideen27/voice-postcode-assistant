@@ -1,0 +1,11 @@
+venv/
+__pycache__/
+*.pyc
+.env
+*.txt
+!requirements.txt
+*.wav
+*.ogg
+*.log
+models/
+llama.cpp/
