@@ -11,26 +11,8 @@ torch==2.14.1
 transformers==5.18.0
 huggingface_hub==1.33.0
 accelerate==1.15.0
-librosa  # PIN: replace with the version from Name: librosa
-Version: 1.0.0
-Summary: Python module for audio and music processing
-Home-page: https://librosa.org
-Author: Brian McFee, librosa development team
-Author-email: brian.mcfee@nyu.edu
-License: ISC
-Location: /home/muideen/Desktop/NCAIR/venv/lib/python3.12/site-packages
-Requires: decorator, joblib, lazy_loader, msgpack, numba, numpy, pooch, scikit-learn, scipy, soundfile, soxr
-Required-by:  in your venv
-soundfile  # PIN: replace with the version from Name: soundfile
-Version: 0.14.0
-Summary: An audio library based on libsndfile, CFFI and NumPy
-Home-page: https://github.com/bastibe/python-soundfile
-Author: Bastian Bechtold
-Author-email: bastibe.dev@mailbox.org
-License: BSD 3-Clause License
-Location: /home/muideen/Desktop/NCAIR/venv/lib/python3.12/site-packages
-Requires: cffi, numpy, typing-extensions
-Required-by: librosa
+librosa
+soundfile
 # Dev only
-pytest  # PIN
-ruff  # PIN
+pytest
+ruff
