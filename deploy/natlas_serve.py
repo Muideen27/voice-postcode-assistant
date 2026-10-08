@@ -5,10 +5,10 @@ One-time setup:
     modal secret create natlas-api NATLAS_API_KEY=<a long random string you choose>
 
 Debug run (logs stream to your terminal, Ctrl+C stops everything):
-    modal serve natlas_serve.py 2>&1 | tee serve.log
+    modal serve deploy/natlas_serve.py 2>&1 | tee serve.log
 
 Deploy (gives you a permanent https URL):
-    modal deploy natlas_serve.py
+    modal deploy deploy/natlas_serve.py
 
 Stop paying when idle: the GPU shuts down automatically after SCALEDOWN seconds without requests.
 Uses the same 'hf-cache' volume as natlas_llm_test.py, so the model is not downloaded again.
@@ -27,7 +27,7 @@ cache = modal.Volume.from_name("hf-cache", create_if_missing=True)
 image = (
     modal.Image.debian_slim(python_version="3.11")
     .apt_install("build-essential")  # C compiler that vLLM/Triton may need at startup
-    .pip_install("vllm", "huggingface_hub")
+    .pip_install("vllm==0.30.0", "huggingface_hub")
     .env({
         "HF_HOME": "/cache",
         # FlashInfer's sampler compiles CUDA code at startup and needs nvcc, which this image lacks.

@@ -198,30 +198,36 @@ Every call: header `X-API-Key`, **5 s timeout**. API responses are wrapped in `d
 
 | Function | Call | Expected output |
 |---|---|---|
-| `reverse(lat, lng)` | `GET /v1/search/reverse?lat&lng&max_distance_m=250` | `{"found":true,"postcode":"LA-11-A12-GN-01","display":"LA 11 A12 GN 01","confidence":"high","distance_m":9.2}` or `{"found":false}` |
+| `reverse(lat, lng)` | `GET /v1/search/reverse?lat&lng&max_distance_m=50`, then once with `=250` if `found` is false | `{"found":true,"postcode":"LA-11-A12-GN-01","display":"LA 11 A12 GN 01","confidence":"high","distance_m":9.2}` or `{"found":false}` |
 | `lookup(code)` | `GET /v1/lookup?code=&level=1` | `{"postcode":"LA-11-A12-GN-01","valid":true,"status":"valid"}` or `valid:false, status:"not_found"` |
 | `segments(code)` | local split + `data/states.json` | `[("LA","Lagos"),("11",None),("A12",None),("GN",None),("01",None)]` |
 
 - `segments()` returns raw codes plus the state name only when the state code is in `data/states.json`
   (else `None`). The orchestrator turns each segment into a label from the templates (§3.2 example).
-- `data/states.json` holds **verified codes only**: a code goes in only after a real API response showed
-  it for a known location. Unknown state codes are shown as the code alone, never guessed.
-- The `lookup` response shape above is [pin]: confirm against a live call and update the recorded test
-  fixtures.
+- `data/states.json` holds **documented codes only**: AK, BA, EB, EK, EN, FC, JI, KN, LA, NI, OG, each
+  paired with its state name in the official API docs (docs.postcode.gov.ng "Test postcodes" table and
+  widget/format examples, compiled 1 Oct 2026). Any other state code is shown as the code alone, never guessed.
+- Response shapes are [verified]: live responses from 3 Oct 2026 are in `tests/fixtures/postcode/`
+  (re-record with `scripts/record_postcode_fixtures.py`). Live reverse bodies also carry `coordinate`,
+  `area`, `district`, `state`, `depth`, `radius_m` (unused). Lookup also returns `verified` (unused).
+  200s carry `x-ratelimit-limit: 600` and `x-ratelimit-remaining`.
 
-Error mapping: `401/403` → config error (alert, generic user message); `402` → credits error; `429` → wait
-and retry once after 2 s; timeout (5 s) → "service is slow, try again"; `level_not_granted` → continue at L1.
+Errors arrive as `{"error":{"code","message"}}`. Mapping: `auth_required` or `401/403` → config error
+(alert, generic user message); `402` → credits error; `level_not_granted` → its own error kind (we only
+call level 1, so it signals a config bug); `429` → wait and retry once after 2 s; timeout (5 s) →
+"service is slow, try again"; `404` on lookup → not found.
 
 ### 3.7 Web endpoints
 
 | Route | Request | Response |
 |---|---|---|
 | `GET /` | none | `index.html` (< 50 KB) |
-| `POST /api/language` | `{"session":"<uuid>","lang":"yo"}` | `Reply` (menu) |
+| `POST /api/language` | `{"session":"<uuid>","lang":"yo"}` | `Reply` (`ask_knew_before` for a new user, else menu) |
 | `POST /api/location` | `{"session","lat","lng","accuracy_m"}` | `Reply` (postcode) |
 | `POST /api/voice` | multipart: `session`, `audio` file | `Reply` (any kind) |
 | `POST /api/text` | `{"session","text"}` (≤ 500 chars) | `Reply` |
-| `POST /api/feedback` | `{"session","helpful":true}` or `{"session","knew_before":false}` | `Reply` (thanks) |
+| `POST /api/feedback` | `{"session","helpful":true}` | `Reply` (thanks) |
+| `POST /api/feedback` | `{"session","knew_before":true\|false\|null}` (null = skipped) | `Reply` (menu) |
 
 `session` is a random UUID kept in the browser; the server hashes it before use.
 
@@ -236,8 +242,9 @@ One JSONL line per user turn in a Modal Volume at `/logs/interactions-YYYY-MM-DD
  "reply_kind":"ask_location","feedback":null,"knew_postcode_before":null}
 ```
 
-`knew_postcode_before` is asked once per user, right after their first postcode result, and is set only on
-the row of the turn that answers it (null elsewhere).
+`knew_postcode_before` is asked once per user, right after the language choice and **before any postcode
+is shown** (asking after a result would bias it). It is skippable (→ null) and is set only on the row of
+the turn that answers it (null elsewhere).
 
 `scripts/export_log.py` → `docs/validation_log.csv` plus a summary table (counts per language, input,
 intent, completion rate, median latency, helpful %, % who did not know their postcode) for the validation PDF.
@@ -279,3 +286,7 @@ The Twilio echo prototype is kept in `archive/twillo_echo.py`.
   every Postcode API call; postcode regex unanchored, case-insensitive, normalised. `states.json` holds
   verified codes only. `HASH_SALT` in new `voice-postcode` secret. `knew_postcode_before` asked once after
   the first postcode result (`Reply.kind` `ask_knew_before`). Evals moved to `evals/`.
+- 2026-10-08: `knew_postcode_before` asked right after language choice, before any postcode, skippable.
+  `reverse()` tries 50 m then 250 m once. `states.json` = 11 codes from the official API docs. Postcode API
+  shapes verified from live responses (3 Oct 2026); error envelope and `auth_required` /
+  `level_not_granted` mapping documented.

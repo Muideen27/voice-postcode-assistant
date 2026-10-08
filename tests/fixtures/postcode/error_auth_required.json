@@ -1,0 +1,1 @@
+{"error":{"code":"auth_required","message":"an API key is required; pass it in the X-API-Key header"}}

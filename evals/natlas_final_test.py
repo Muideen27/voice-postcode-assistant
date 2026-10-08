@@ -6,9 +6,9 @@ Works against either backend:
    Modal (vLLM):        export NATLAS_URL=https://<your-modal-url>   NATLAS_API_KEY=<your key>
 
 Usage:
-   python natlas_final_test.py reply     # A: grounded replies with the language stated explicitly (3 tests)
-   python natlas_final_test.py intent    # B: few-shot + JSON-schema intent detection (5 tests)
-   python natlas_final_test.py all
+   python evals/natlas_final_test.py reply     # A: grounded replies with the language stated explicitly (3 tests)
+   python evals/natlas_final_test.py intent    # B: few-shot + JSON-schema intent detection (5 tests)
+   python evals/natlas_final_test.py all
 """
 import json
 import os

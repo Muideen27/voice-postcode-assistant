@@ -2,9 +2,9 @@
 Test access to the official N-ATLAS ASR models and run a transcription.
 
 Usage:
-    python test_natlas_asr.py check                 # access check for all 4 models (fast, ~1 KB each)
-    python test_natlas_asr.py yo my_clip.wav         # transcribe a Yoruba clip
-    python test_natlas_asr.py ha my_clip.wav         # Hausa  (ig = Igbo, en = Nigerian English)
+    python evals/test_natlas_asr.py check                 # access check for all 4 models (fast, ~1 KB each)
+    python evals/test_natlas_asr.py yo my_clip.wav         # transcribe a Yoruba clip
+    python evals/test_natlas_asr.py ha my_clip.wav         # Hausa  (ig = Igbo, en = Nigerian English)
 
 Setup (once):
     pip install -U "huggingface_hub[cli]" transformers torch librosa soundfile

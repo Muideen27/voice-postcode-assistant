@@ -60,6 +60,9 @@ One core, thin channel. All logic lives in the orchestrator; the channel only tr
 ### Conversation flow
 
 1. **New user** -> welcome + consent + language menu (1 Yorùbá, 2 Hausa, 3 Igbo, 4 English).
+   Right after the language choice, and **before any postcode is shown**, ask once per user:
+   "Did you know your new postcode before today?" (yes / no / skip) -> `knew_postcode_before`
+   (skip -> null). Asking after a result would bias the answer.
 2. **Location** (browser geolocation) -> `reverse` -> template reply (code + each segment explained)
    -> feedback.
 3. **Voice note** -> ASR (chosen language) -> same path as text.
@@ -69,8 +72,6 @@ One core, thin channel. All logic lives in the orchestrator; the channel only tr
    - `explain_postcode` -> LLM answers from `data/fact_sheet_<lang>.md` only
    - `greeting` / `other` / low confidence -> show menu again
 5. **Feedback** (1 = helpful, 2 = not) -> interaction log.
-6. **Knew it before?** Once per user, after their first postcode result, ask one yes/no question
-   ("Did you know your postcode before today?") -> `knew_postcode_before` in the log row for that turn.
 
 Voice stays the primary path; "Type instead" is a secondary option (PS2 is for people who do not type).
 If the GPU is cold, the web page shows progress and waits up to 180 s before showing a localised retry
@@ -84,24 +85,25 @@ Status: (exists) = working file today, (planned) = to be written.
 app/
   main.py              (planned) Modal app: FastAPI web endpoint + orchestrator wiring
   orchestrator.py      (planned) state machine, routing, reply assembly
-  events.py            (planned) Event and Reply dataclasses
+  events.py            (exists) Event and Reply dataclasses
   channels/
     web.py             (planned) serves web/index.html, POST /api/language|voice|location|text|feedback
   services/
     asr.py             (planned) Modal GPU class, loads 4 ASR models once
     llm.py             (planned) client for the vLLM endpoint (intent + reply)
     prompts.py         (planned) all LLM prompt text
-    postcode.py        (planned) reverse, lookup, segments, postcode regex/normalise
+    postcode.py        (exists) reverse, lookup, segments, postcode regex/normalise
   templates/           (planned) reply strings per language: en.json, yo.json, ha.json, ig.json
   store.py             (planned) sessions (Modal Dict), interaction log (Volume, JSONL)
 data/
-  states.json          (planned) state codes -> names, verified codes only
+  states.json          (exists) state codes -> names, documented codes only (11 so far)
   fact_sheet_<lang>.md (planned) facts the LLM may use for explain_postcode
 web/index.html         (planned) low-bandwidth page, < 50 KB, no frameworks
 deploy/
   natlas_serve.py      (exists) vLLM on L4, OpenAI-compatible, API-key protected
 tests/                 unit tests only: no network, run by `pytest -q`
-  test_postcode.py     (planned) API client tests with recorded responses
+  test_postcode.py     (exists) API client tests with recorded responses
+  fixtures/postcode/   (exists) API response bodies; see its README for which are live
   test_orchestrator.py (planned) state machine tests with fake services
 evals/                 live-model checks (need GPU/network), never collected by pytest
   natlas_final_test.py (exists) intent + grounded-reply evals (laptop or Modal)
@@ -109,6 +111,7 @@ evals/                 live-model checks (need GPU/network), never collected by 
   results.md           (planned) eval scores, one entry per prompt change
 scripts/
   export_log.py        (planned) interaction log -> CSV/PDF evidence
+  record_postcode_fixtures.py (exists) refresh tests/fixtures/postcode from the live API
 archive/
   twillo_echo.py       (archived) Twilio WhatsApp echo prototype, see Future work
 docs/                  submission PDFs (integration evidence, validation, technical docs, team)
@@ -174,9 +177,13 @@ Quality: Yoruba and Hausa good, Igbo weaker (label it beta). Place names come ou
   `not_found`. Known-valid code for tests: `LA-11-A12-GN-01` (from reverse geocode of 6.6018, 3.3515).
 - Our key is **Lookup level 1 only** (validity). Names and addresses need L2 (requested, pending);
   handle `level_not_granted` gracefully.
-- `/v1/search/reverse?lat&lng&max_distance_m=250` returns codes only, no names, plus `confidence`.
+- `/v1/search/reverse?lat&lng&max_distance_m=` returns codes only, no names, plus `confidence` and
+  `distance_m`. We ask within 50 m first and retry once at 250 m if `found` is false.
+- Errors come as `{"error":{"code","message"}}`. Seen live: `auth_required` (no key),
+  `level_not_granted` (level above our key). Real responses: `tests/fixtures/postcode/`.
   Responses are wrapped in `data` (`data.found`, `data.unit.postcode`).
-- 5 s timeout on every call. Rate limit 600/window; on `429` wait 2 s and retry once.
+- 5 s timeout on every call. Rate limit 600/window (`x-ratelimit-limit`, `x-ratelimit-remaining`
+  headers); on `429` wait 2 s and retry once.
 
 ## Coding conventions
 
@@ -231,3 +238,7 @@ account is locked. The Twilio echo prototype is kept in `archive/twillo_echo.py`
   moved from `tests/` to `evals/` (scores in `evals/results.md`). vLLM pinned to 0.30.0. Reverse geocode
   radius 250 m, 5 s Postcode API timeout. New `voice-postcode` secret with `POSTCODE_API_KEY` and
   `HASH_SALT`. `knew_postcode_before` asked once per user after the first postcode result. Tests first.
+- 2026-10-08: `knew_postcode_before` moved to right after language choice, before any postcode (skippable
+  -> null), to avoid biasing the answer. Reverse geocode tries 50 m, then 250 m once. `states.json` has
+  the 11 codes named in the official API docs. Live API responses (3 Oct) replace the reconstructed test
+  fixtures. Superseded root scripts `natlas_{llm,text,local}_test.py` deleted.

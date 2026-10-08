@@ -1,0 +1,17 @@
+{
+  "_note": "Verified state codes only. A code goes in only when an official source pairs it with a state name. Any other code is shown as the code alone, never guessed.",
+  "source": "Official Postcode API docs (docs.postcode.gov.ng): 'Test postcodes' table plus widget/format examples, compiled 1 Oct 2026. LA also confirmed live: reverse geocode of 6.6018, 3.3515 (Ikeja) returned LA-11-A12-GN-01 on 3 Oct 2026.",
+  "codes": {
+    "AK": {"name": "Akwa Ibom"},
+    "BA": {"name": "Bauchi"},
+    "EB": {"name": "Ebonyi"},
+    "EK": {"name": "Ekiti"},
+    "EN": {"name": "Enugu"},
+    "FC": {"name": "Federal Capital Territory"},
+    "JI": {"name": "Jigawa"},
+    "KN": {"name": "Kano"},
+    "LA": {"name": "Lagos"},
+    "NI": {"name": "Niger"},
+    "OG": {"name": "Ogun"}
+  }
+}
