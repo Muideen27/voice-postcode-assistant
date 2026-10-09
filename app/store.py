@@ -277,3 +277,42 @@ class ModalDictDeclineCounter:
         day = today_wat()
         current = await self._dict.get.aio(day) or 0
         await self._dict.put.aio(day, int(current) + 1)
+
+
+# ---------------------------------------------------------------- Postcode API data canary
+
+CanaryStatus = Literal["valid", "not_found", "auth", "error"]
+
+
+class CanaryStore(Protocol):
+    """Daily canary results, next to the decline counter: {"YYYY-MM-DD": {status: count, "last": status}}."""
+
+    async def record(self, status: CanaryStatus) -> None: ...
+
+
+def _add_canary(day: dict[str, Any] | None, status: CanaryStatus) -> dict[str, Any]:
+    day = dict(day or {})
+    day[status] = int(day.get(status, 0)) + 1
+    day["last"] = status
+    day["last_ts"] = now_wat()
+    return day
+
+
+class MemoryCanaryStore:
+    def __init__(self) -> None:
+        self.days: dict[str, dict[str, Any]] = {}
+
+    async def record(self, status: CanaryStatus) -> None:
+        day = today_wat()
+        self.days[day] = _add_canary(self.days.get(day), status)
+
+
+class ModalDictCanaryStore:
+    """Canary results in their own `modal.Dict`, keyed "YYYY-MM-DD" (WAT). Read-then-write, like declines."""
+
+    def __init__(self, modal_dict: Any) -> None:
+        self._dict = modal_dict
+
+    async def record(self, status: CanaryStatus) -> None:
+        day = today_wat()
+        await self._dict.put.aio(day, _add_canary(await self._dict.get.aio(day), status))

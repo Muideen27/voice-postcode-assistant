@@ -106,6 +106,7 @@ app/
   store.py             (exists) user hashing, sessions (Modal Dict), interaction log (Volume, JSONL),
                        anonymous daily decline counter (Modal Dict)
   privacy.py           (exists) scrub()/for_storage(): PII removed + 300-char cap before storing text
+  canary.py            (exists) Postcode API data canary (container start + every 30 min)
 data/
   states.json          (exists) state codes -> names, documented codes only (11 so far)
   fact_sheet_<lang>.md (exists) source facts for the faq_* templates; sent to the model only in generate mode
@@ -124,6 +125,8 @@ tests/                 unit tests only: no network, run by `pytest -q`
   test_review_scripts.py (exists) review sheet round trip
   test_asr.py          (exists) upload checks, ffmpeg decode, silence, timeouts (fake GPU)
   test_web.py          (exists) HTTP -> Event mapping, validation, static files
+  test_canary.py       (exists) canary statuses and daily store (fakes)
+  test_export_log.py   (exists) merge/sort/dedupe/summary on a fixture log
 evals/                 live-model checks (need GPU/network), never collected by pytest
   natlas_final_test.py (exists) live intent + explain evals; imports prompts.py/llm.py (no copies)
   cases.py             (exists) 40 intent + 12 explain held-out cases
@@ -132,16 +135,18 @@ evals/                 live-model checks (need GPU/network), never collected by 
   asr_smoke.py         (exists) live GPU smoke test: `modal run evals/asr_smoke.py --clips yo:yo_test.wav`
   results.md           (exists) eval scores, one entry per prompt change
 scripts/
-  export_log.py        (planned) interaction log -> CSV/PDF evidence
+  export_log.py        (exists) log Volume + Dicts -> docs/validation/interactions.csv + summary.md
   record_postcode_fixtures.py (exists) refresh tests/fixtures/postcode from the live API
   review_sheet.py      (exists) templates -> docs/review/<lang>.csv for native-speaker review
   apply_review.py      (exists) filled docs/review/<lang>.csv -> templates, clears _todo_review
   build_fonts.py       (exists) download + subset fonts into web/fonts/ (dev: fonttools, brotli)
-  warm.sh              (exists) keep one N-ATLaS GPU warm for a pilot window, then back to 0
+  warm.sh / warm.py    (exists) LLM + ASR min_containers=1 for a window, prints cold starts, back to 0
   ui_screens.py        (exists) 360 px screenshots, live page vs prototype -> docs/ui-compare/
 archive/
   twillo_echo.py       (archived) Twilio WhatsApp echo prototype, see Future work
 docs/                  submission PDFs (integration evidence, validation, technical docs, team)
+  pilot_checklist.md   (exists) secret, reviews, gates, warm-up, real-phone check, tester script
+  validation/          export_log.py output: interactions.csv, summary.md
   review/<lang>.csv    (exists) review sheets for yo, ha, ig (all strings except faq_*)
   review/faq_<lang>.csv (exists) short FAQ-answer review sheets
   review/ui_<lang>.csv (exists) page-label review sheets (ui_*, chip, conf_*)
@@ -184,10 +189,11 @@ ruff check . && ruff format .
 
 # app (once written)
 VP_ENV=dev modal serve app/main.py   # dev; log rows go to /logs/dev/ (never pilot evidence)
-modal deploy app/main.py         # prod
+modal deploy app/main.py         # prod: https://muideen27--voice-postcode-web.modal.run
+python scripts/export_log.py --pull --since <pilot start ISO>   # evidence -> docs/validation/
 modal app logs <app-name> | tail -n 20
-scripts/warm.sh 90               # pilot session: min_containers=1 for 90 min, then back to 0 (Ctrl+C resets)
-scripts/warm.sh off              # reset min_containers to 0 now
+scripts/warm.sh 90               # pilot: LLM + ASR min_containers=1 for 90 min, then 0 (Ctrl+C resets)
+scripts/warm.sh off              # reset both to 0 now
 modal app stop <app-name>        # stop anything stuck retrying
 
 # audio prep for manual ASR tests
@@ -308,3 +314,5 @@ account is locked. The Twilio echo prototype is kept in `archive/twillo_echo.py`
   `main.py` (Modal wiring, 30-min TTL sweep for unconsented sessions, `VP_ENV=dev` log isolation).
 - 2026-10-09: `web/index.html` from the prototype; 24 page-label keys (approved); street/name rule; Postcode
   `auth` errors kept apart from not-found; screenshots in `docs/ui-compare/`.
+- 2026-10-09: Deployed (`voice-postcode`). Data canary, `export_log.py`, `warm.sh` for LLM + ASR,
+  `docs/pilot_checklist.md`. Not-found wording no longer blames the user or the location.

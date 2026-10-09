@@ -4,7 +4,8 @@ SPEC.md §3.7. No logic lives here; the browser session UUID is hashed before an
 
 import asyncio
 import re
-from collections.abc import Awaitable, Callable
+from collections.abc import AsyncIterator, Awaitable, Callable
+from contextlib import asynccontextmanager
 from dataclasses import asdict
 from pathlib import Path
 from typing import Annotated, Any
@@ -65,9 +66,22 @@ def create_api(
     web_dir: Path,
     templates: dict[Lang, dict[str, str]],
     warmers: list[Warmer] | None = None,
+    on_start: list[Warmer] | None = None,
 ) -> FastAPI:
-    api = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
-    background: set[asyncio.Task[None]] = set()  # keep references so warm-up tasks are not collected
+    background: set[asyncio.Task[Any]] = set()  # keep references so background tasks are not collected
+
+    def spawn(job: Warmer) -> None:
+        task = asyncio.create_task(job())
+        background.add(task)
+        task.add_done_callback(background.discard)
+
+    @asynccontextmanager
+    async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+        for job in on_start or []:  # e.g. the Postcode API data canary; never blocks start-up
+            spawn(job)
+        yield
+
+    api = FastAPI(docs_url=None, redoc_url=None, openapi_url=None, lifespan=lifespan)
 
     def user(session: str) -> str:
         if not _UUID_RE.fullmatch(session or ""):
@@ -107,9 +121,7 @@ def create_api(
     async def warm() -> Response:
         """Start the GPUs in the background and return at once; the page calls this on load."""
         for warmer in warmers or []:
-            task = asyncio.create_task(warmer())
-            background.add(task)
-            task.add_done_callback(background.discard)
+            spawn(warmer)
         return Response(status_code=204)
 
     # ---------------------------------------------------------------- conversation

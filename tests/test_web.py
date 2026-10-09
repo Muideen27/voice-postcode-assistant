@@ -152,3 +152,15 @@ def test_warm_returns_at_once_and_runs_warmers(web: Any) -> None:
     assert client.get("/api/warm").status_code == 204
     client.get("/")  # give the event loop a turn
     assert warmed == ["gpu"]
+
+
+def test_on_start_jobs_run_when_the_app_starts(tmp_path: Path) -> None:
+    (tmp_path / "index.html").write_text("x")
+    ran: list[str] = []
+
+    async def canary() -> None:
+        ran.append("canary")
+
+    with TestClient(create_api(Recorder(), "salt", tmp_path, T, on_start=[canary])) as client:
+        client.get("/")
+    assert ran == ["canary"]

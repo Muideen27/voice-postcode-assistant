@@ -305,6 +305,17 @@ is auth, not not-found); `402` → credits error; `level_not_granted` → its ow
 call level 1, so it signals a config bug); `429` → wait and retry once after 2 s; timeout (5 s) →
 "service is slow, try again"; `404` on lookup → not found.
 
+**Data canary** (`app/canary.py`): at every web container start (background task) and every 30 minutes
+(`postcode_canary` scheduled function), look up LA-11-A12-GN-01 at level 1 and log one JSON line
+`{"canary": "valid|not_found|auth|error", "ts": ...}`. Daily counts and the last result go to the
+`voice-postcode-canary` Dict (`{"YYYY-MM-DD": {"valid": n, "not_found": n, "auth": n, "error": n, "last",
+"last_ts"}}`), next to the declines counter; `export_log.py` reports them per day. It never touches users
+or the interaction log.
+
+Not-found wording never blames the user or the location: `postcode_not_found` = "The official postcode
+database has no postcode for this spot yet…", `validation_not_found` = "{display} is not in the official
+postcode database yet…".
+
 ### 3.7 Web endpoints
 
 | Route | Request | Response |
@@ -368,8 +379,11 @@ logged `intent` is `other` (routing still uses the keyword net).
 `reply_kind` is `Reply.kind`, except `template_fallback` when the explain answer came from the template.
 
 `scripts/export_log.py` must glob `interactions-*.jsonl` across all days and containers, merge the rows,
-sort them by `ts`, and drop duplicates on `(ts, user_hash)`. Output: `docs/validation_log.csv` plus a summary table (counts per language, input,
-intent, completion rate, median latency, helpful %, % who did not know their postcode) for the validation PDF.
+sort them by `ts`, and drop duplicates on `(ts, user_hash)` (top-level files only; `/logs/dev/` is ignored).
+`--since <ISO>` drops rows before the pilot start. Output: `docs/validation/interactions.csv` (one row per
+turn, latency flattened) and `docs/validation/summary.md`: interactions, unique users, by language, by input
+type, intent mix, feedback yes/no, knew-before split, latency p50/p95 per stage, declines per day, canary
+results per day.
 
 ---
 
@@ -432,6 +446,9 @@ The Twilio echo prototype is kept in `archive/twillo_echo.py`.
   budget HTML+CSS+JS < 50 KB, fonts < 120 KB. Fact sheets out of the review flow.
 - 2026-10-09: ASR revisions pinned; ASR cold/warm timings. New routes `/api/strings/<lang>` and
   `/api/location-denied`. Dev runs (`VP_ENV=dev`) log to `/logs/dev/`.
+- 2026-10-09: Data canary (start + 30 min, daily Dict); not-found wording; export_log outputs
+  (`docs/validation/interactions.csv`, `summary.md`, `--since` for the pilot start); `warm.sh` warms LLM and
+  ASR. Deployed at https://muideen27--voice-postcode-web.modal.run.
 - 2026-10-09: Postcode `auth` error kind (`invalid_api_key`, `auth_required`, 401/403) never reads as not
   found. `Reply.distance_m`. Street/name rule → `faq_place_name_no`. Page labels as template keys (24:
   `ui_*`, `chip`, `conf_*`), first-screen rules, measured page weight; JetBrains Mono 500 dropped (unused).

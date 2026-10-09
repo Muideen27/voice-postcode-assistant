@@ -42,6 +42,7 @@ image = (
 
 sessions_dict = modal.Dict.from_name("voice-postcode-sessions", create_if_missing=True)
 declines_dict = modal.Dict.from_name("voice-postcode-declines", create_if_missing=True)
+canary_dict = modal.Dict.from_name("voice-postcode-canary", create_if_missing=True)
 logs_volume = modal.Volume.from_name("voice-postcode-logs", create_if_missing=True)
 SECRETS = [modal.Secret.from_name("voice-postcode"), modal.Secret.from_name("natlas-api")]
 
@@ -56,17 +57,20 @@ def session_store():
 @modal.concurrent(max_inputs=50)
 @modal.asgi_app()
 def web():
+    from app.canary import run_canary
     from app.channels.web import create_api
     from app.orchestrator import Orchestrator, load_templates
     from app.services.asr import ModalAsr, warm_asr
     from app.services.llm import NatlasClient, NatlasExplain, NatlasIntent
     from app.services.postcode import PostcodeClient, load_states
-    from app.store import JsonlLog, ModalDictDeclineCounter
+    from app.store import JsonlLog, ModalDictCanaryStore, ModalDictDeclineCounter
 
     templates = load_templates()
     llm = NatlasClient.from_env()
+    postcode = PostcodeClient(os.environ["POSTCODE_API_KEY"])
+    canary_store = ModalDictCanaryStore(canary_dict)
     orchestrator = Orchestrator(
-        postcode=PostcodeClient(os.environ["POSTCODE_API_KEY"]),
+        postcode=postcode,
         intent=NatlasIntent(llm),
         reply=NatlasExplain(llm),  # used only when EXPLAIN_MODE=generate
         asr=ModalAsr(),
@@ -87,7 +91,22 @@ def web():
         ROOT / "web",
         templates,
         warmers=[llm.warm, warm_asr],
+        on_start=[lambda: run_canary(postcode, canary_store)],
     )
+
+
+@app.function(image=image, secrets=SECRETS, schedule=modal.Period(minutes=30), timeout=60)
+async def postcode_canary() -> None:
+    """Every 30 minutes: is the official Postcode API data there? (also run when a web container starts)"""
+    from app.canary import run_canary
+    from app.services.postcode import PostcodeClient
+    from app.store import ModalDictCanaryStore
+
+    client = PostcodeClient(os.environ["POSTCODE_API_KEY"])
+    try:
+        await run_canary(client, ModalDictCanaryStore(canary_dict))
+    finally:
+        await client.aclose()
 
 
 @app.function(image=image, schedule=modal.Period(minutes=15), timeout=120)

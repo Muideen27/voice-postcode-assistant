@@ -88,3 +88,11 @@ def test_who_built_has_attribution_and_data_source(lang: str) -> None:
 def test_place_name_no_points_to_the_location_button(lang: str) -> None:
     t = strings(lang)
     assert f'"{t["btn_location"]}"' in t["faq_place_name_no"]
+
+
+def test_not_found_wording_blames_neither_user_nor_location() -> None:
+    en = strings("en")
+    for key in ("postcode_not_found", "validation_not_found"):
+        assert "official postcode database" in en[key], key
+        for blame in ("Stand outside", "could not find", "was not found", "move"):
+            assert blame not in en[key], (key, blame)

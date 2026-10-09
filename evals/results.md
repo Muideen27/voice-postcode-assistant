@@ -157,6 +157,7 @@ Scored by outcome. A case passes if the `faq_id` is right, or if the intent show
 | ig | 3/3 |
 | **All** | **12/12** |
 
+- **N-ATLaS classifies street-name questions as `get_my_postcode`; the `place_name_no` rule does that routing (12/12, rule-based).**
 - **All 12 passed through the rule; none through the LLM.** N-ATLaS still classifies every one of these as `get_my_postcode`. The rule, not the model, is what makes this work.
 - A unit test checks that none of the 40 intent-eval `get_my_postcode` cases trigger the rule, so plain requests still ask for location.
 - **Latency:** intent p50 2.6 s, p95 4.6 s.
