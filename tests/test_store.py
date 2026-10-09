@@ -18,6 +18,7 @@ from app.store import (
     ModalDictDeclineCounter,
     ModalDictSessionStore,
     Session,
+    TtlSessionStore,
     hash_user,
     now_wat,
     today_wat,
@@ -205,3 +206,44 @@ def test_modal_dict_decline_counter_stores_only_date_and_count() -> None:
 
 def test_llm_status_is_in_the_schema() -> None:
     assert json.loads(make_row(llm_status="timeout").to_json())["llm_status"] == "timeout"
+
+
+# ---------------------------------------------------------------- unconsented-session TTL
+
+
+class Clock:
+    def __init__(self) -> None:
+        self.now = 1_000_000.0
+
+    def __call__(self) -> float:
+        return self.now
+
+
+def test_unconsented_session_expires_after_30_minutes() -> None:
+    clock, inner = Clock(), MemorySessionStore()
+    store = TtlSessionStore(inner, clock=clock)
+    run(store.put(USER, Session(stage="consent", lang="yo")))
+    clock.now += 29 * 60
+    assert run(store.get(USER)).stage == "consent"
+    clock.now += 2 * 60
+    assert run(store.get(USER)) == Session()
+    assert USER not in inner.data
+
+
+def test_consented_session_never_expires_here() -> None:
+    clock = Clock()
+    store = TtlSessionStore(MemorySessionStore(), clock=clock)
+    run(store.put(USER, Session(stage="ready", lang="ha")))
+    clock.now += 7 * 24 * 3600
+    assert run(store.get(USER)).stage == "ready"
+
+
+def test_sweep_removes_only_stale_unconsented_sessions() -> None:
+    clock, inner = Clock(), MemorySessionStore()
+    store = TtlSessionStore(inner, clock=clock)
+    run(store.put("a" * 64, Session(stage="consent")))
+    run(store.put("b" * 64, Session(stage="ready")))
+    clock.now += 31 * 60
+    run(store.put("c" * 64, Session(stage="consent")))  # fresh
+    assert run(store.sweep(list(inner.data.items()))) == 1
+    assert set(inner.data) == {"b" * 64, "c" * 64}

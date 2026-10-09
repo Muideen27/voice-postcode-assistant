@@ -7,6 +7,7 @@ coordinates, raw session IDs or audio, and `LogRow` rejects anything that is not
 import hashlib
 import json
 import re
+import time
 from collections.abc import Awaitable, Callable
 from dataclasses import asdict, dataclass, field, fields
 from datetime import datetime, timedelta, timezone
@@ -51,6 +52,7 @@ class Session:
     lang: Lang | None = None
     awaiting_feedback: bool = False  # a bare "1"/"2" typed now answers "Did this help?"
     turns: int = 0
+    updated_ts: float = 0.0  # unix seconds of the last write; used only for the unconsented-session TTL
 
     @classmethod
     def from_dict(cls, data: dict[str, Any] | None) -> "Session":
@@ -78,6 +80,50 @@ class MemorySessionStore:
 
     async def delete(self, user_hash: str) -> None:
         self.data.pop(user_hash, None)
+
+
+UNCONSENTED_TTL_S = 30 * 60
+
+
+class TtlSessionStore:
+    """Wraps a store: a session still waiting for consent expires 30 minutes after its last write.
+
+    Expired sessions read as new (and are deleted). `sweep()` removes the ones nobody comes back to;
+    main.py runs it on a schedule. Consented sessions are never expired here.
+    """
+
+    def __init__(
+        self, inner: SessionStore, ttl_s: float = UNCONSENTED_TTL_S, clock: Callable[[], float] = time.time
+    ) -> None:
+        self._inner = inner
+        self._ttl_s = ttl_s
+        self._clock = clock
+
+    def expired(self, session: Session) -> bool:
+        return session.stage == "consent" and self._clock() - session.updated_ts > self._ttl_s
+
+    async def get(self, user_hash: str) -> Session:
+        session = await self._inner.get(user_hash)
+        if self.expired(session):
+            await self._inner.delete(user_hash)
+            return Session()
+        return session
+
+    async def put(self, user_hash: str, session: Session) -> None:
+        session.updated_ts = self._clock()
+        await self._inner.put(user_hash, session)
+
+    async def delete(self, user_hash: str) -> None:
+        await self._inner.delete(user_hash)
+
+    async def sweep(self, items: list[tuple[str, dict[str, Any]]]) -> int:
+        """Delete expired unconsented sessions from (user_hash, stored dict) pairs. Returns the count."""
+        removed = 0
+        for user_hash, data in items:
+            if self.expired(Session.from_dict(data)):
+                await self._inner.delete(user_hash)
+                removed += 1
+        return removed
 
 
 class ModalDictSessionStore:

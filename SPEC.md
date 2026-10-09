@@ -37,8 +37,10 @@ HTML/JS, < 50 KB) served over HTTPS by the Modal app. Web is the only channel in
 | ASR Igbo | `NCAIR1/Igbo-ASR` | [verified access] | Weaker quality, label beta |
 | ASR English | `NCAIR1/NigerianAccentedEnglish` | [verified access] | |
 
-Pin model revisions: before the pilot, record each repo's commit hash (`huggingface_hub.HfApi().model_info(repo).sha`)
-here and load with `revision=<sha>` so a repo update cannot change behaviour mid-pilot. [pin]
+Pinned ASR revisions (8 Oct 2026, loaded with `revision=` in `app/services/asr.py`) [verified]:
+Yoruba `d1ae7b8b79c2ccd547d8761effe5057433f3fc7f`, Hausa `e635b9eda29060c6114c8f4d8b2d903f5c83a44a`,
+Igbo `180732299d5cba3dc8b289260ac84b7838bb3954`, English `3c52c6e6c9ec508014a7b9db6a42b503b8930dff`.
+N-ATLaS LLM revision: not pinned yet (vLLM loads `main`). [pin]
 
 ### Python packages
 
@@ -197,6 +199,9 @@ Example expected output for a location in Ikeja (en):
  "audio_seconds":10.8,"latency_ms":2400}
 ```
 - Empty or near-silent audio → `text: ""` and the orchestrator replies "Couldn't hear that clearly".
+- Measured (8 Oct, L4): cold start 76 s (45 s loading the four models), warm 2–3 s for 10–19 s clips.
+  The per-turn ASR timeout is 20 s (→ `timeout_retry`); `/api/warm` also spawns an ASR container.
+- Audio is decoded through ffmpeg pipes and never written to disk; only 16-bit PCM goes to the GPU.
 
 ### 3.4 LLM: intent
 
@@ -289,6 +294,8 @@ call level 1, so it signals a config bug); `429` → wait and retry once after 2
 |---|---|---|
 | `GET /` | none | `index.html` (HTML + CSS + JS < 50 KB) |
 | `GET /fonts/<file>.woff2` | none | font file, `Cache-Control: public, max-age=31536000, immutable` |
+| `GET /api/strings/<lang>` | none | every template string for that language (the page renders only these) |
+| `POST /api/location-denied` | `{"session"}` | `Reply` (`error`, `location_denied`): geolocation refused or failed |
 | `GET /api/warm` | none | `204` at once; starts a 1-token LLM request in the background (not awaited) so the GPU wakes while the user picks a language. Called once per page load. |
 | `POST /api/language` | `{"session":"<uuid>","lang":"yo"}` | `Reply` (`welcome` with consent for a new user, else `menu`) |
 | `POST /api/consent` | `{"session","agree":true\|false}` | `Reply` (`ask_knew_before`, or `declined`) |
@@ -406,6 +413,8 @@ The Twilio echo prototype is kept in `archive/twillo_echo.py`.
   default `faq`; generate mode kept, off). Guard rejects unknown capitalised words. LLM timeout 20 s with
   `warming_up` template; `GET /api/warm`; `scripts/warm.sh`. Fonts self-hosted and subset (117.4 KB);
   budget HTML+CSS+JS < 50 KB, fonts < 120 KB. Fact sheets out of the review flow.
+- 2026-10-09: ASR revisions pinned; ASR cold/warm timings. New routes `/api/strings/<lang>` and
+  `/api/location-denied`. Dev runs (`VP_ENV=dev`) log to `/logs/dev/`.
 - 2026-10-08: Web page contract: match `web/design/prototype.html` exactly (phone screen only). Glyph
   coverage table and unicode-range fallback rule. Open question on font transfer size vs the 50 KB budget.
   30-minute TTL for unconsented sessions (implemented in `main.py`).

@@ -89,15 +89,15 @@ Status: (exists) = working file today, (planned) = to be written.
 
 ```
 app/
-  main.py              (planned) Modal app: FastAPI web endpoint + orchestrator wiring
+  main.py              (exists) Modal app `voice-postcode`: web endpoint, wiring, ASR class, session sweep
   orchestrator.py      (exists) state machine, routing, reply assembly, keyword safety net
   events.py            (exists) Event and Reply dataclasses
   channels/
-    web.py             (planned) serves web/index.html, POST /api/language|voice|location|text|feedback
+    web.py             (exists) HTTP -> Event; /, /fonts, /api/strings|warm|language|consent|location|voice|text|feedback
   services/
     interfaces.py      (exists) Protocols for intent/reply/ASR/postcode services + IntentResult, AsrError,
                        LlmError
-    asr.py             (planned) Modal GPU class, loads 4 ASR models once
+    asr.py             (exists) ffmpeg decode + limits (CPU) and Modal L4 class with the 4 pinned models
     llm.py             (exists) N-ATLaS client: NatlasIntent, NatlasExplain, output guard
     prompts.py         (exists) all LLM prompt text, few-shot, schema, request params
     postcode.py        (exists) reverse, lookup, segments, postcode regex/normalise
@@ -121,11 +121,14 @@ tests/                 unit tests only: no network, run by `pytest -q`
   test_store.py        (exists) hashing, sessions, log schema and privacy
   test_privacy.py      (exists) NIN, phone, email scrubbing; postcodes survive
   test_review_scripts.py (exists) review sheet round trip
+  test_asr.py          (exists) upload checks, ffmpeg decode, silence, timeouts (fake GPU)
+  test_web.py          (exists) HTTP -> Event mapping, validation, static files
 evals/                 live-model checks (need GPU/network), never collected by pytest
   natlas_final_test.py (exists) live intent + explain evals; imports prompts.py/llm.py (no copies)
   cases.py             (exists) 40 intent + 12 explain held-out cases
   runs/                (exists) one JSON per eval run
-  test_natlas_asr.py   (exists) ASR access check + transcription
+  test_natlas_asr.py   (exists) ASR access check + transcription (laptop)
+  asr_smoke.py         (exists) live GPU smoke test: `modal run evals/asr_smoke.py --clips yo:yo_test.wav`
   results.md           (exists) eval scores, one entry per prompt change
 scripts/
   export_log.py        (planned) interaction log -> CSV/PDF evidence
@@ -176,7 +179,7 @@ pytest -m pilot                  # release gate before real users (template revi
 ruff check . && ruff format .
 
 # app (once written)
-modal serve app/main.py          # dev
+VP_ENV=dev modal serve app/main.py   # dev; log rows go to /logs/dev/ (never pilot evidence)
 modal deploy app/main.py         # prod
 modal app logs <app-name> | tail -n 20
 scripts/warm.sh 90               # pilot session: min_containers=1 for 90 min, then back to 0 (Ctrl+C resets)
@@ -296,3 +299,5 @@ account is locked. The Twilio echo prototype is kept in `archive/twillo_echo.py`
   `prompts.py` with 40 + 12 held-out cases; results in `evals/results.md`.
 - 2026-10-08: FAQ routing replaces generated explain answers (`EXPLAIN_MODE=faq`). 20 s LLM timeout +
   `warming_up`; `/api/warm`; `scripts/warm.sh`. Self-hosted subset fonts in `web/fonts/`.
+- 2026-10-09: `asr.py` (pinned revisions, ffmpeg pipes, 20 s limit, silence skip), `channels/web.py`,
+  `main.py` (Modal wiring, 30-min TTL sweep for unconsented sessions, `VP_ENV=dev` log isolation).
