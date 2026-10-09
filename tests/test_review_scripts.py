@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 
 from scripts.apply_review import apply_review
-from scripts.review_sheet import COLUMNS, write_sheet
+from scripts.review_sheet import COLUMNS, GROUPS, group_of, write_sheet
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -33,22 +33,19 @@ def write_rows(path: Path, rows: list[dict[str, str]]) -> None:
 
 
 @pytest.mark.parametrize("lang", ["yo", "ha", "ig"])
-def test_main_and_faq_sheets_split_the_review_keys(lang: str, templates: Path, tmp_path: Path) -> None:
-    main_path, main_count = write_sheet(lang, templates, tmp_path / "review")
-    faq_path, faq_count = write_sheet(lang, templates, tmp_path / "review", faq=True)
-    main_rows, faq_rows = read_rows(main_path), read_rows(faq_path)
+def test_three_sheets_split_the_review_keys(lang: str, templates: Path, tmp_path: Path) -> None:
     todo = json.loads((templates / f"{lang}.json").read_text(encoding="utf-8"))["_todo_review"]
-
-    assert faq_path.name == f"faq_{lang}.csv"
-    assert (main_count, faq_count) == (len(main_rows), len(faq_rows))
-    assert [r["key"] for r in main_rows] + [r["key"] for r in faq_rows] == [
-        *[k for k in todo if not k.startswith("faq_")],
-        *[k for k in todo if k.startswith("faq_")],
-    ]
-    assert all(r["key"].startswith("faq_") for r in faq_rows) and faq_count == 8
-    assert not any(r["key"].startswith("faq_") or r["key"] == "fact_sheet" for r in main_rows)
-    assert all(r["reviewer_text"] == "" for r in main_rows + faq_rows)
-    assert main_path.read_bytes().startswith(b"\xef\xbb\xbf")  # BOM for spreadsheet apps
+    keys: dict[str, list[str]] = {}
+    for group in GROUPS:
+        path, count = write_sheet(lang, templates, tmp_path / "review", group=group)
+        rows = read_rows(path)
+        assert count == len(rows) and all(r["reviewer_text"] == "" for r in rows)
+        assert path.read_bytes().startswith(b"\xef\xbb\xbf")  # BOM for spreadsheet apps
+        keys[group] = [r["key"] for r in rows]
+    assert sorted(sum(keys.values(), [])) == sorted(todo)  # every review key in exactly one sheet
+    assert all(k.startswith("faq_") for k in keys["faq"]) and len(keys["faq"]) == 8
+    assert all(k.startswith(("ui_", "conf_")) or k == "chip" for k in keys["ui"]) and len(keys["ui"]) == 24
+    assert not any(group_of(k) != "main" for k in keys["main"])
 
 
 def test_apply_writes_text_and_clears_review_keys(templates: Path, tmp_path: Path) -> None:
@@ -69,7 +66,7 @@ def test_apply_writes_text_and_clears_review_keys(templates: Path, tmp_path: Pat
 
 
 def test_apply_faq_sheet(templates: Path, tmp_path: Path) -> None:
-    path, _ = write_sheet("ig", templates, tmp_path / "review", faq=True)
+    path, _ = write_sheet("ig", templates, tmp_path / "review", group="faq")
     rows = read_rows(path)
     rows[0]["reviewer_text"] = rows[0]["draft"] + " (reviewed)"
     write_rows(path, rows)

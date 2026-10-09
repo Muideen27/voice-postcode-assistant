@@ -1,0 +1,25 @@
+﻿key,english,draft,reviewer_text,notes
+ui_bar_title,Postcode helper,Olùrànlọ́wọ́ pósíkòdì,,Short label on the web page.
+ui_choose,Choose your language,Yan èdè rẹ,,Short label on the web page.
+ui_intro,"Find and understand your new postcode. Your location is used once, then deleted.",Wá pósíkòdì tuntun rẹ kí o sì mọ ìtumọ̀ rẹ̀. A ń lo ibi tí o wà lẹ́ẹ̀kan ṣoṣo.,,Short label on the web page.
+ui_beta,beta,ìdánwò,,Short label on the web page.
+ui_change,change,yí padà,,Short label on the web page.
+ui_home_title,What would you like to do?,Kí lo fẹ́ ṣe?,,Short label on the web page.
+ui_get_sub,Tap to share your location,Tẹ láti fi ibi tí o wà ránṣẹ́,,Short label on the web page.
+ui_ask_sub,"Tap, speak, then tap again to send","Tẹ, sọ̀rọ̀, kí o tún tẹ̀ láti fi ránṣẹ́",,Short label on the web page.
+ui_type_sub,"Write in Yorùbá, Hausa, Igbo or English","Kọ ní Yorùbá, Hausa, Igbo tàbí Gẹ̀ẹ́sì",,Short label on the web page.
+ui_locating,Finding your building…,Ó ń wá ilé rẹ…,,Short label on the web page.
+ui_listening,Listening…,Mò ń gbọ́…,,Short label on the web page.
+ui_working,Working on it…,Ó ń ṣiṣẹ́…,,Short label on the web page.
+ui_your_postcode,Your postcode is,Pósíkòdì rẹ ni,,Short label on the web page.
+ui_copy,Copy postcode,Ṣẹ̀dà pósíkòdì,,Short label on the web page.
+ui_copied,Copied,A ti ṣẹ̀dà rẹ̀,,Short label on the web page.
+ui_back,Back,Padà,,Short label on the web page.
+ui_message_label,Message,Ọ̀rọ̀,,Short label on the web page.
+ui_placeholder,Example: what is my postcode?,Àpẹẹrẹ: kí ni pósíkòdì mi?,,Short label on the web page.
+ui_empty,Write a message first.,Kọ ọ̀rọ̀ kan kọ́kọ́.,,Short label on the web page.
+ui_mic_denied,"We could not use your microphone. Allow the microphone for this page, or tap ""Type instead"".","A kò lè lo gbohùngbohùn rẹ. Gba ojú-ìwé yìí láàyè láti lo gbohùngbohùn, tàbí tẹ ""Kọ ọ́ dípò"".",,Short label on the web page. A quoted button name must match that button's text in your language (btn_* rows).
+chip,{confidence} · {distance} m away,{confidence} · {distance} m,,"Keep {confidence}, {distance} exactly as written; it is filled in by the app. Shown under the postcode, e.g. ""High confidence · 9.2 m away""."
+conf_high,High confidence,Ìgbẹ́kẹ̀lé gíga,,
+conf_medium,Medium confidence,Ìgbẹ́kẹ̀lé àárín,,
+conf_low,Low confidence,Ìgbẹ́kẹ̀lé kékeré,,

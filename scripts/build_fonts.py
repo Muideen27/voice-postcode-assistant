@@ -6,7 +6,7 @@ Usage:
 
 Fonts and weights are exactly what web/design/prototype.html loads:
     Atkinson Hyperlegible 400, 700 (body)     Bricolage Grotesque 500-700 + opsz (display)
-    JetBrains Mono 500, 700 (codes)
+    JetBrains Mono 700 (codes)
 Glyph check (SPEC.md §1): neither Atkinson Hyperlegible (nor its successor Atkinson Hyperlegible Next) nor
 Bricolage Grotesque has every Yoruba/Hausa/Igbo letter, so a Noto Sans fallback is built containing ONLY the
 missing letters; the CSS adds it with unicode-range. Budget: all fonts < 120 KB (SPEC.md §1).
@@ -14,8 +14,9 @@ missing letters; the CSS adds it with unicode-range. Budget: all fonts < 120 KB 
 Size choices (measured 8 Oct 2026):
 - Bricolage keeps its variable weight (500-700) and optical size, limited to opsz 12-48: the prototype's
   largest display text is 38 px, so rendering is unchanged and the file drops from 69 to 60 KB.
-- JetBrains Mono only renders codes in the phone screen (format line, postcode, segment codes), so it is
-  subset to ASCII + "·"; no mono fallback is needed.
+- JetBrains Mono only renders codes in the phone screen (postcode, segment codes; both weight 700), so only
+  the 700 weight is built, subset to ASCII + "·"; no mono fallback is needed. (The prototype's 500 weight
+  is used only by its page header, which the app does not ship.)
 - pyftsubset's default layout features (kern, liga, mark, mkmk, ccmp, ...) keep accent positioning.
 """
 
@@ -93,7 +94,6 @@ def main() -> None:
     subset(SRC / "atkinson-700.ttf", "atkinson-700.woff2", LATIN)
     bricolage = instance("bricolage-var.ttf", "bricolage-sub.ttf", wdth=100, wght=(500, 700), opsz=(12, 48))
     subset(bricolage, "bricolage.woff2", LATIN)
-    subset(instance("jetbrains-var.ttf", "jetbrains-500.ttf", wght=500), "jetbrains-500.woff2", CODES)
     subset(instance("jetbrains-var.ttf", "jetbrains-700.ttf", wght=700), "jetbrains-700.woff2", CODES)
     # Fallback: only the missing letters, weight range 400-700 kept (one small file for body and display).
     noto = instance("noto-sans-var.ttf", "noto-sans-400-700.ttf", wdth=100, wght=(400, 700))

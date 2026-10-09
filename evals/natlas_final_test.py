@@ -10,6 +10,7 @@ Usage:
     python evals/natlas_final_test.py            # health (cold start timing), intent, faq
     python evals/natlas_final_test.py intent
     python evals/natlas_final_test.py faq
+    python evals/natlas_final_test.py place      # street / place-name subset
     python evals/natlas_final_test.py explain    # generate mode (off in production)
 
 Writes evals/runs/<UTC timestamp>.json with every input, output, status and latency. Record the summary
@@ -30,11 +31,17 @@ sys.path.insert(0, str(ROOT))
 
 import httpx  # noqa: E402
 
-from app.orchestrator import resolve_intent  # noqa: E402
+from app.orchestrator import resolve_intent, resolve_route  # noqa: E402
 from app.services import prompts  # noqa: E402
 from app.services.interfaces import LlmError  # noqa: E402
 from app.services.llm import NatlasClient, NatlasIntent, guard  # noqa: E402
-from evals.cases import EXPLAIN_CASES, FAQ_CASES, FAQ_EQUIVALENT_INTENTS, INTENT_CASES  # noqa: E402
+from evals.cases import (  # noqa: E402
+    EXPLAIN_CASES,
+    FAQ_CASES,
+    FAQ_EQUIVALENT_INTENTS,
+    INTENT_CASES,
+    PLACE_NAME_CASES,
+)
 
 RUNS = ROOT / "evals" / "runs"
 
@@ -140,6 +147,34 @@ async def run_faq(client: NatlasClient) -> dict[str, Any]:
     return {"rows": rows, "summary": out}
 
 
+async def run_place(client: NatlasClient) -> dict[str, Any]:
+    """Street / place-name questions must reach faq_place_name_no (LLM or the street/name rule)."""
+    service = NatlasIntent(client)
+    rows = []
+    for lang, texts in PLACE_NAME_CASES.items():
+        for text in texts:
+            start = time.perf_counter()
+            result, status = None, "ok"
+            try:
+                result = await service.classify(text, lang)  # type: ignore[arg-type]
+            except LlmError as exc:
+                status = exc.kind
+            ms = round((time.perf_counter() - start) * 1000)
+            intent, faq_id = resolve_route(text, result)
+            ok = faq_id == "place_name_no"
+            via = "llm" if result and result.faq_id == "place_name_no" else "rule" if ok else "-"
+            rows.append({"lang": lang, "text": text, "llm_intent": result.intent if result else None,
+                         "llm_faq_id": result.faq_id if result else None, "routed": [intent, faq_id],
+                         "via": via, "llm_status": status, "ok": ok, "ms": ms})  # fmt: skip
+            print(
+                f"[place {lang}] {'PASS' if ok else 'FAIL'} via={via} routed={intent}/{faq_id}  {text[:60]}"
+            )
+    out = {lang: round(sum(r["ok"] for r in rows if lang == "all" or r["lang"] == lang)
+                       / sum(1 for r in rows if lang == "all" or r["lang"] == lang), 3)
+           for lang in [*PLACE_NAME_CASES, "all"]}  # fmt: skip
+    return {"rows": rows, "summary": out}
+
+
 async def run_explain(client: NatlasClient) -> dict[str, Any]:
     facts = {lang: prompts.load_fact_sheet(lang) for lang in prompts.LANG_NAMES}
     rows = []
@@ -210,6 +245,9 @@ async def main(mode: str) -> None:
         if mode in ("all", "faq"):
             report["faq"] = await run_faq(client)
             report["faq_latency"] = latency(report["faq"]["rows"])
+        if mode == "place":
+            report["place"] = await run_place(client)
+            report["place_latency"] = latency(report["place"]["rows"])
         if mode == "explain":
             report["explain"] = await run_explain(client)
             report["explain_latency"] = latency(report["explain"]["rows"])
@@ -223,7 +261,7 @@ async def main(mode: str) -> None:
     path = RUNS / f"{datetime.now(UTC).strftime('%Y%m%dT%H%M%SZ')}.json"
     path.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print("\nSUMMARY")
-    for key in ("health", "intent_latency", "faq_latency", "explain_latency"):
+    for key in ("health", "intent_latency", "faq_latency", "place_latency", "explain_latency"):
         if key in report:
             print(f"  {key}: {report[key]}")
     if "intent" in report:
@@ -232,6 +270,8 @@ async def main(mode: str) -> None:
     if "faq" in report:
         for lang, s in report["faq"]["summary"].items():
             print(f"  faq {lang}: {s}")
+    if "place" in report:
+        print(f"  place: {report['place']['summary']}")
     if "explain" in report:
         print(f"  explain: {report['explain']['summary']}")
     print(f"  written: {path.relative_to(ROOT)}")

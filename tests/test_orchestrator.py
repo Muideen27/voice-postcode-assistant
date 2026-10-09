@@ -7,7 +7,7 @@ from typing import Any
 import pytest
 
 from app.events import Event, Lang
-from app.orchestrator import Orchestrator, load_templates, resolve_intent, safety_net
+from app.orchestrator import Orchestrator, load_templates, resolve_intent, resolve_route, safety_net
 from app.services.interfaces import AsrError, IntentResult, LlmError
 from app.services.postcode import LookupResult, PostcodeError, ReverseResult, load_states
 from app.store import MemoryDeclineCounter, MemoryLog, MemorySessionStore, Session, hash_user
@@ -521,7 +521,7 @@ def test_voice_errors_map_to_templates(asr: FakeAsr, key: str) -> None:
         ("timeout", "error_slow"),
         ("rate_limited", "error_slow"),
         ("unavailable", "error_unavailable"),
-        ("config", "error_generic"),  # includes auth_required
+        ("auth", "error_generic"),  # auth_required / invalid_api_key
         ("credits", "error_generic"),
         ("level_not_granted", "error_generic"),
     ],
@@ -536,10 +536,10 @@ def test_postcode_errors_map_to_templates(kind: str, key: str, path: str) -> Non
 
 
 def test_config_errors_raise_an_alert(capsys: pytest.CaptureFixture[str]) -> None:
-    h = ready("en", postcode=FakePostcode(reverse=PostcodeError("config")))
+    h = ready("en", postcode=FakePostcode(reverse=PostcodeError("auth", code="invalid_api_key")))
     h.send("location", lat=6.6, lng=3.3)
     alerts = [json.loads(line) for line in capsys.readouterr().out.splitlines() if '"alert"' in line]
-    assert alerts == [{"event": "alert", "source": "postcode_api", "kind": "config"}]
+    assert alerts == [{"event": "alert", "source": "postcode_api", "kind": "auth", "code": "invalid_api_key"}]
 
 
 # ---------------------------------------------------------------- feedback and logging
@@ -727,3 +727,55 @@ def test_timeout_with_keyword_uses_safety_net() -> None:
 def test_non_timeout_failure_with_no_keyword_shows_menu() -> None:
     h = ready("en", intent=FakeIntent(LlmError("bad_json")))
     assert h.send("text", "hello there").kind == "menu"
+
+
+@pytest.mark.parametrize("code", ["invalid_api_key", "auth_required"])
+@pytest.mark.parametrize("path", ["location", "text"])
+def test_auth_failure_never_reads_as_no_postcode(code: str, path: str) -> None:
+    error = PostcodeError("auth", code=code)
+    h = ready("yo", postcode=FakePostcode(reverse=error, lookup=error))
+    reply = h.send("location", lat=6.6, lng=3.3) if path == "location" else h.send("text", VALID)
+    assert reply.text == T["yo"]["error_generic"]
+    assert reply.text not in (T["yo"]["postcode_not_found"], T["yo"]["validation_not_found"])
+    row = h.last_row
+    assert (row["api_status"], row["postcode_found"]) == (f"auth:{code}", None)
+
+
+# ---------------------------------------------------------------- street / place name rule
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "can you give me my postcode if I tell you my street name",
+        "Orúkọ òpópónà mi ni Allen, kí ni pósíkòdì mi?",
+        "titina shi ne Zoo Road, menene postcode dina",
+        "aha okporo ụzọ m bụ Ogui Road, kedu postcode m",
+    ],
+)
+def test_street_or_name_turns_get_my_postcode_into_place_name_no(text: str) -> None:
+    assert resolve_route(text, IntentResult("get_my_postcode", 0.9)) == ("explain_postcode", "place_name_no")
+
+
+def test_plain_requests_still_ask_for_location() -> None:
+    from evals.cases import INTENT_CASES
+
+    for rows in INTENT_CASES.values():
+        for text, expected in rows:
+            if expected == "get_my_postcode":
+                assert resolve_route(text, IntentResult("get_my_postcode", 0.9)) == (
+                    "get_my_postcode",
+                    None,
+                ), text
+
+
+def test_street_rule_end_to_end() -> None:
+    h = ready("en", intent=FakeIntent("get_my_postcode"))
+    reply = h.send("text", "my street is Bode Thomas road, what is my postcode")
+    assert (reply.kind, reply.text) == ("ask_location", T["en"]["faq_place_name_no"])
+    assert (h.last_row["intent"], h.last_row["reply_kind"]) == ("explain_postcode", "faq_place_name_no")
+
+
+def test_location_reply_carries_distance_for_the_chip() -> None:
+    h = ready("en")
+    assert h.send("location", lat=6.6018, lng=3.3515).distance_m == 9.2

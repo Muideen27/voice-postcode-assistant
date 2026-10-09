@@ -4,8 +4,8 @@ Usage:
     python scripts/review_sheet.py            # yo, ha, ig
     python scripts/review_sheet.py yo         # one language
 
-Two sheets per language: <lang>.csv (all strings except the FAQ answers) and faq_<lang>.csv (faq_* only,
-a short separate sheet). Columns: key, english, draft, reviewer_text (empty), notes. The file is UTF-8 with a BOM so Excel and
+Three sheets per language: <lang>.csv (conversation strings), faq_<lang>.csv (faq_* answers) and
+ui_<lang>.csv (page labels: ui_*, chip, conf_*). Columns: key, english, draft, reviewer_text (empty), notes. The file is UTF-8 with a BOM so Excel and
 Google Sheets show Yorùbá/Hausa/Igbo letters correctly. Read it back with scripts/apply_review.py.
 """
 
@@ -48,6 +48,10 @@ def note_for(key: str, english: str) -> str:
         )
     if key in BUTTON_KEYS or key.startswith("btn_"):
         notes.append("Button label: keep it short.")
+    if key.startswith("ui_"):
+        notes.append("Short label on the web page.")
+    if key == "chip":
+        notes.append('Shown under the postcode, e.g. "High confidence · 9.2 m away".')
     if key.startswith("faq_"):
         notes.append("Answer to a common question. At most 60 words. Add no new facts, numbers or places.")
     if key == "faq_who_built":
@@ -61,18 +65,29 @@ def note_for(key: str, english: str) -> str:
     return " ".join(notes)
 
 
+GROUPS = ("main", "faq", "ui")
+
+
+def group_of(key: str) -> str:
+    if key.startswith("faq_"):
+        return "faq"
+    if key.startswith(("ui_", "conf_")) or key == "chip":
+        return "ui"
+    return "main"
+
+
 def write_sheet(
     lang: str,
     templates_dir: Path = TEMPLATES,
     out_dir: Path = OUT,
-    faq: bool = False,
+    group: str = "main",
 ) -> tuple[Path, int]:
-    """docs/review/<lang>.csv (all keys except faq_*) or, with faq=True, docs/review/faq_<lang>.csv."""
+    """docs/review/<lang>.csv (main), faq_<lang>.csv (faq_* answers) or ui_<lang>.csv (page labels)."""
     en = json.loads((templates_dir / "en.json").read_text(encoding="utf-8"))
     draft = json.loads((templates_dir / f"{lang}.json").read_text(encoding="utf-8"))
     out_dir.mkdir(parents=True, exist_ok=True)
-    path = out_dir / (f"faq_{lang}.csv" if faq else f"{lang}.csv")
-    keys = [k for k in draft["_todo_review"] if k.startswith("faq_") == faq]
+    path = out_dir / (f"{lang}.csv" if group == "main" else f"{group}_{lang}.csv")
+    keys = [k for k in draft["_todo_review"] if group_of(k) == group]
     with path.open("w", encoding="utf-8-sig", newline="") as f:
         writer = csv.writer(f)
         writer.writerow(COLUMNS)
@@ -83,8 +98,8 @@ def write_sheet(
 
 def main(argv: list[str]) -> None:
     for lang in argv or LANGS:
-        for faq in (False, True):
-            path, rows = write_sheet(lang, faq=faq)
+        for group in GROUPS:
+            path, rows = write_sheet(lang, group=group)
             print(f"{path.relative_to(ROOT)}  {rows} rows")
 
 

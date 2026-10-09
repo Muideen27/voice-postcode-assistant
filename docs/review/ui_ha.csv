@@ -1,0 +1,25 @@
+﻿key,english,draft,reviewer_text,notes
+ui_bar_title,Postcode helper,Mataimakin postcode,,Short label on the web page.
+ui_choose,Choose your language,Zaɓi harshenka,,Short label on the web page.
+ui_intro,"Find and understand your new postcode. Your location is used once, then deleted.",Nemo kuma ka fahimci sabuwar lambar gidan wayarka. Ana amfani da wurinka sau ɗaya kawai.,,Short label on the web page.
+ui_beta,beta,gwaji,,Short label on the web page.
+ui_change,change,canza,,Short label on the web page.
+ui_home_title,What would you like to do?,Me kake so ka yi?,,Short label on the web page.
+ui_get_sub,Tap to share your location,Taɓa don aika wurinka,,Short label on the web page.
+ui_ask_sub,"Tap, speak, then tap again to send","Taɓa, yi magana, sannan ka sake taɓawa don aika",,Short label on the web page.
+ui_type_sub,"Write in Yorùbá, Hausa, Igbo or English","Rubuta da Yorùbá, Hausa, Igbo ko Turanci",,Short label on the web page.
+ui_locating,Finding your building…,Ana neman gidanka…,,Short label on the web page.
+ui_listening,Listening…,Ina saurare…,,Short label on the web page.
+ui_working,Working on it…,Ana aiki…,,Short label on the web page.
+ui_your_postcode,Your postcode is,Lambar gidan wayarka ita ce,,Short label on the web page.
+ui_copy,Copy postcode,Kwafi lambar,,Short label on the web page.
+ui_copied,Copied,An kwafa,,Short label on the web page.
+ui_back,Back,Koma,,Short label on the web page.
+ui_message_label,Message,Saƙo,,Short label on the web page.
+ui_placeholder,Example: what is my postcode?,Misali: menene lambata?,,Short label on the web page.
+ui_empty,Write a message first.,Rubuta saƙo tukuna.,,Short label on the web page.
+ui_mic_denied,"We could not use your microphone. Allow the microphone for this page, or tap ""Type instead"".","Ba mu iya amfani da makirufonka ba. Ba wa wannan shafin izinin makirufo, ko ka danna ""Rubuta maimakon haka"".",,Short label on the web page. A quoted button name must match that button's text in your language (btn_* rows).
+chip,{confidence} · {distance} m away,{confidence} · mita {distance},,"Keep {confidence}, {distance} exactly as written; it is filled in by the app. Shown under the postcode, e.g. ""High confidence · 9.2 m away""."
+conf_high,High confidence,Tabbaci mai yawa,,
+conf_medium,Medium confidence,Tabbaci matsakaici,,
+conf_low,Low confidence,Tabbaci kaɗan,,

@@ -15,7 +15,7 @@ import httpx
 BASE_URL = "https://api.postcode.gov.ng"
 TIMEOUT_S = 5.0
 REVERSE_RADII_M = (50, 250)  # tight radius first; wider retry only if nothing was found
-AUTH_ERROR_CODES = {"auth_required"}
+AUTH_ERROR_CODES = {"auth_required", "invalid_api_key"}  # both seen live (3 and 9 Oct 2026)
 RETRY_AFTER_429_S = 2.0
 STATES_PATH = Path(__file__).resolve().parents[2] / "data" / "states.json"
 
@@ -24,15 +24,18 @@ _PARTS = r"([A-Z]{2})[\s-]?(\d{2})[\s-]?([A-Z0-9]{3})[\s-]?([A-Z]{2})[\s-]?(\d{2
 POSTCODE_RE = re.compile(rf"\b{_PARTS}\b", re.IGNORECASE)
 _FULL_RE = re.compile(rf"\s*{_PARTS}\s*", re.IGNORECASE)
 
-ErrorKind = Literal["config", "credits", "rate_limited", "timeout", "unavailable", "level_not_granted"]
+# "auth" (bad, missing or revoked key) is our failure, never "no postcode here": the user gets the generic
+# error message and the log/alert carry the API's error code.
+ErrorKind = Literal["auth", "credits", "rate_limited", "timeout", "unavailable", "level_not_granted"]
 
 
 class PostcodeError(Exception):
     """An API failure the orchestrator turns into a localised message. `kind` picks the message."""
 
-    def __init__(self, kind: ErrorKind, detail: str = "") -> None:
+    def __init__(self, kind: ErrorKind, detail: str = "", code: str | None = None) -> None:
         super().__init__(f"{kind}: {detail}" if detail else kind)
         self.kind = kind
+        self.code = code  # the API's error code, e.g. "invalid_api_key"; None when there was no body
 
 
 @dataclass(frozen=True)
@@ -171,7 +174,7 @@ class PostcodeClient:
         if postcode is None:
             return LookupResult(code, False, "bad_format")
         status, body = await self._get("/v1/lookup", {"code": postcode, "level": 1})
-        if status == 404:
+        if status == 404 and _error_code(body) not in AUTH_ERROR_CODES:
             return LookupResult(postcode, False, "not_found")
         self._raise_for(status, body)
         data = _data(body)
@@ -205,9 +208,9 @@ class PostcodeClient:
             return
         # Error codes seen live: auth_required (no key), level_not_granted (level above our L1 key).
         if code == "level_not_granted":
-            raise PostcodeError("level_not_granted", f"{status} {code}")
+            raise PostcodeError("level_not_granted", f"{status} {code}", code)
         if code in AUTH_ERROR_CODES or status in (401, 403):
-            raise PostcodeError("config", f"{status} {code}")
+            raise PostcodeError("auth", f"{status} {code}", code)
         if status == 402:
-            raise PostcodeError("credits", f"{status} {code}")
-        raise PostcodeError("unavailable", f"{status} {code}")
+            raise PostcodeError("credits", f"{status} {code}", code)
+        raise PostcodeError("unavailable", f"{status} {code}", code)

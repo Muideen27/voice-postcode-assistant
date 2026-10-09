@@ -141,3 +141,23 @@ Scored by outcome. A case passes if the `faq_id` is right, or if the intent show
 - An explain question now costs one intent call, about 2.7 s. In generate mode it was intent plus a second call of 6.7–11 s.
 - The longer few-shot prompt added about 0.7 s to the intent p50, which still meets the SPEC target of ≤ 3 s.
 - The app's LLM timeout is 20 s, so any turn that hits a ~136 s cold start falls back to the safety net or the `warming_up` template. `/api/warm` and `scripts/warm.sh` are meant to prevent that.
+
+## 2026-10-09: street / place-name subset (resolve_route rule)
+
+- **Run:** `evals/runs/20261009T082357Z.json`.
+- **Code:** the commit that adds this section. The run used that working tree on top of `fad0cea`.
+- **Change:** `resolve_route` adds a rule. A `get_my_postcode` request that names a street, road or "name" (in any of the four languages, matched without accents) goes to `faq_place_name_no`. Prompts are unchanged.
+- **Cases:** 12, 3 per language. They are the 4 FAQ_CASES that missed on 8 Oct plus 8 new ones, all held out from the few-shot set.
+
+| Language | Reaches faq_place_name_no |
+|---|---|
+| en | 3/3 |
+| yo | 3/3 |
+| ha | 3/3 |
+| ig | 3/3 |
+| **All** | **12/12** |
+
+- **All 12 passed through the rule; none through the LLM.** N-ATLaS still classifies every one of these as `get_my_postcode`. The rule, not the model, is what makes this work.
+- A unit test checks that none of the 40 intent-eval `get_my_postcode` cases trigger the rule, so plain requests still ask for location.
+- **Latency:** intent p50 2.6 s, p95 4.6 s.
+- **Cold start this time: 349 s**, against 136 s on 8 Oct. Cold starts vary a lot, so pilot sessions should use `scripts/warm.sh`.

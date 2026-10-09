@@ -1,0 +1,194 @@
+{
+  "date": "2026-10-09T08:17:34+00:00",
+  "commit": "fad0cea",
+  "dirty": true,
+  "health": {
+    "status": 200,
+    "seconds": 349.2
+  },
+  "place": {
+    "rows": [
+      {
+        "lang": "en",
+        "text": "Can you tell me my postcode if I tell you my street name?",
+        "llm_intent": "get_my_postcode",
+        "llm_faq_id": null,
+        "routed": [
+          "explain_postcode",
+          "place_name_no"
+        ],
+        "via": "rule",
+        "llm_status": "ok",
+        "ok": true,
+        "ms": 4640
+      },
+      {
+        "lang": "en",
+        "text": "My street is Adeola Odeku, what is my postcode?",
+        "llm_intent": "get_my_postcode",
+        "llm_faq_id": null,
+        "routed": [
+          "explain_postcode",
+          "place_name_no"
+        ],
+        "via": "rule",
+        "llm_status": "ok",
+        "ok": true,
+        "ms": 2755
+      },
+      {
+        "lang": "en",
+        "text": "what is the postcode for 12 Bode Thomas road",
+        "llm_intent": "get_my_postcode",
+        "llm_faq_id": null,
+        "routed": [
+          "explain_postcode",
+          "place_name_no"
+        ],
+        "via": "rule",
+        "llm_status": "ok",
+        "ok": true,
+        "ms": 2642
+      },
+      {
+        "lang": "yo",
+        "text": "Ṣé ẹ lè fún mi ní pósíkòdì mi tí mo bá sọ orúkọ òpópónà mi?",
+        "llm_intent": "get_my_postcode",
+        "llm_faq_id": null,
+        "routed": [
+          "explain_postcode",
+          "place_name_no"
+        ],
+        "via": "rule",
+        "llm_status": "ok",
+        "ok": true,
+        "ms": 2692
+      },
+      {
+        "lang": "yo",
+        "text": "Orúkọ òpópónà mi ni Allen, kí ni pósíkòdì mi?",
+        "llm_intent": "get_my_postcode",
+        "llm_faq_id": null,
+        "routed": [
+          "explain_postcode",
+          "place_name_no"
+        ],
+        "via": "rule",
+        "llm_status": "ok",
+        "ok": true,
+        "ms": 2459
+      },
+      {
+        "lang": "yo",
+        "text": "ṣe o le wa posikodi mi pelu oruko adugbo mi",
+        "llm_intent": "get_my_postcode",
+        "llm_faq_id": null,
+        "routed": [
+          "explain_postcode",
+          "place_name_no"
+        ],
+        "via": "rule",
+        "llm_status": "ok",
+        "ok": true,
+        "ms": 2393
+      },
+      {
+        "lang": "ha",
+        "text": "Za ku iya ba ni postcode dina idan na faɗi sunan titina?",
+        "llm_intent": "get_my_postcode",
+        "llm_faq_id": null,
+        "routed": [
+          "explain_postcode",
+          "place_name_no"
+        ],
+        "via": "rule",
+        "llm_status": "ok",
+        "ok": true,
+        "ms": 2816
+      },
+      {
+        "lang": "ha",
+        "text": "Titina shi ne Zoo Road, menene postcode dina?",
+        "llm_intent": "get_my_postcode",
+        "llm_faq_id": null,
+        "routed": [
+          "explain_postcode",
+          "place_name_no"
+        ],
+        "via": "rule",
+        "llm_status": "ok",
+        "ok": true,
+        "ms": 2581
+      },
+      {
+        "lang": "ha",
+        "text": "sunan unguwata sabon gari ina postcode dina",
+        "llm_intent": "get_my_postcode",
+        "llm_faq_id": null,
+        "routed": [
+          "explain_postcode",
+          "place_name_no"
+        ],
+        "via": "rule",
+        "llm_status": "ok",
+        "ok": true,
+        "ms": 2514
+      },
+      {
+        "lang": "ig",
+        "text": "Ị nwere ike inye m postcode m ma m gwa gị aha okporo ụzọ m?",
+        "llm_intent": "get_my_postcode",
+        "llm_faq_id": null,
+        "routed": [
+          "explain_postcode",
+          "place_name_no"
+        ],
+        "via": "rule",
+        "llm_status": "ok",
+        "ok": true,
+        "ms": 2725
+      },
+      {
+        "lang": "ig",
+        "text": "Aha okporo ụzọ m bụ Ogui Road, kedu postcode m?",
+        "llm_intent": "get_my_postcode",
+        "llm_faq_id": null,
+        "routed": [
+          "explain_postcode",
+          "place_name_no"
+        ],
+        "via": "rule",
+        "llm_status": "ok",
+        "ok": true,
+        "ms": 2657
+      },
+      {
+        "lang": "ig",
+        "text": "enwere m ike inye gi aha obodo m ka i choputa postcode m",
+        "llm_intent": "get_my_postcode",
+        "llm_faq_id": null,
+        "routed": [
+          "explain_postcode",
+          "place_name_no"
+        ],
+        "via": "rule",
+        "llm_status": "ok",
+        "ok": true,
+        "ms": 2397
+      }
+    ],
+    "summary": {
+      "en": 1.0,
+      "yo": 1.0,
+      "ha": 1.0,
+      "ig": 1.0,
+      "all": 1.0
+    }
+  },
+  "place_latency": {
+    "n": 12,
+    "p50_ms": 2642,
+    "p95_ms": 4640,
+    "max_ms": 4640
+  }
+}

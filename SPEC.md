@@ -89,6 +89,13 @@ Versions below are what Modal's mirror installed in our working images on 4 to 8
 | Browsers supported | Chrome for Android 100+, Samsung Internet 20+, Safari iOS 15+ | Test on one low-end Android phone |
 | Design | `web/design/prototype.html` | Source of truth; see contract below |
 
+**First screen.** As in the prototype: "Choose your language" title and intro line in the browser's
+language (`navigator.language` if en/yo/ha/ig, else English), switching once a language is picked;
+the four language names in their own languages (prototype order en, yo, ha, ig), Igbo marked with the
+`ui_beta` chip, the N-ATLaS attribution below. Consent, "did you know" and `ask_code` screens are built
+only from prototype parts. Page labels are template keys `ui_*`, `chip`, `conf_*` (reviewed via
+`docs/review/ui_<lang>.csv`).
+
 **Web page contract.** The web page must match `web/design/prototype.html` exactly: colours, fonts, layout, spacing, components and screen order. Do not redesign it. Use only the phone screen from the Prototype tab (leave out the tabs, trace panel, dashboard and flow view). Keep its `:root` tokens (light and dark), its fonts (Bricolage Grotesque display, Atkinson Hyperlegible body, JetBrains Mono for codes) and its class names. Strings come from `app/templates`, data from `/api/*`. When the page is built, put 360 px screenshots of each screen next to the prototype's in `docs/ui-compare/`.
 
 **Glyph coverage** (checked 8 Oct 2026 against the Google Fonts files the prototype loads, all subsets):
@@ -103,14 +110,18 @@ All three have à á è é ì í ò ó ù ú ń and the combining grave/acute. *
 checked as a replacement (Google Fonts subsets and the upstream google/fonts file): it misses the same
 letters, so the body font stays Atkinson Hyperlegible.
 
-**Self-hosted fonts** (`web/fonts/`, built 8 Oct 2026 by `scripts/build_fonts.py`, 117.4 KB total):
+**Self-hosted fonts** (`web/fonts/`, built by `scripts/build_fonts.py`; 5 files, 103,680 bytes = 101.3 KiB):
 
 | File | Font, weights | Subset | Size |
 |---|---|---|---|
 | `atkinson-400.woff2`, `atkinson-700.woff2` | Atkinson Hyperlegible 400, 700 | Latin, Latin Ext. Additional, ń ɓ ɗ ƙ ƴ (+caps), combining marks, punctuation | 10.0 + 10.2 KB |
 | `bricolage.woff2` | Bricolage Grotesque, variable wght 500–700, opsz 12–48 | same | 60.1 KB |
-| `jetbrains-500.woff2`, `jetbrains-700.woff2` | JetBrains Mono 500, 700 | ASCII + "·" (it only renders codes) | 16.2 + 16.3 KB |
+| `jetbrains-700.woff2` | JetBrains Mono 700 (the phone screen uses mono only at 700) | ASCII + "·" (it only renders codes) | 16.3 KB |
 | `fallback-sans.woff2` | Noto Sans, wght 400–700 | only ẹ ọ ṣ ɓ ɗ ƙ ƴ ị ụ ṅ, their capitals, U+0300/0301/0323 | 4.7 KB |
+
+Measured page weight (9 Oct): `index.html` (HTML + CSS + JS) **19.6 KB raw, 6.5 KB gzip**; strings JSON
+2.1–2.5 KB gzip per language (4 fetched on load); fonts actually downloaded by an English user 96.6 KiB
+(the fallback, 4.7 KiB, loads only when a Yorùbá/Hausa/Igbo letter needs it).
 
 - Bricolage's optical-size axis is limited to 12–48 (the prototype's largest display text is 38 px), so it
   renders the same as the prototype's 12–96 range; this saves 9 KB.
@@ -178,6 +189,7 @@ class Reply:
     segments: list[tuple[str, str]] | None = None   # [("LA", "Lagos State"), ...] labels from templates
     confidence: Literal["high", "medium", "low"] | None = None
     transcript: str | None = None       # shown to user as "We heard: ..."
+    distance_m: float | None = None     # reverse-geocode distance, for the confidence chip
 ```
 
 Example expected output for a location in Ikeja (en):
@@ -227,6 +239,9 @@ Example expected output for a location in Ikeja (en):
   (`valid|correct|check|real|confirm|tona|sayewo|daidai|ingantacciya|duba|ziri ezi|lelee`) →
   `validate_postcode`, else a postcode word (`postcode|post code|posikodi|koodu|lamba|adiresi|address`) →
   `get_my_postcode`; (4) still `other` → menu. `validate_postcode` with no code in the text → `ask_code`.
+  (5) `get_my_postcode` and the text names a street, road or "name" (`street|road|avenue|crescent|name|
+  opopona|oruko|titi…|suna(n)|okporo uzo|aha`, folded) → `explain_postcode` + `place_name_no`
+  (`resolve_route`, shared with the evals).
   Steps (1)–(3) are one pure function, `app.orchestrator.resolve_intent`, which the evals import.
 - Postcode search (in `app/services/postcode.py`, `find_postcode(text)`): case-insensitive, **unanchored**,
   segments separated by `-`, spaces or nothing:
@@ -283,8 +298,10 @@ Every call: header `X-API-Key`, **5 s timeout**. API responses are wrapped in `d
   `area`, `district`, `state`, `depth`, `radius_m` (unused). Lookup also returns `verified` (unused).
   200s carry `x-ratelimit-limit: 600` and `x-ratelimit-remaining`.
 
-Errors arrive as `{"error":{"code","message"}}`. Mapping: `auth_required` or `401/403` → config error
-(alert, generic user message); `402` → credits error; `level_not_granted` → its own error kind (we only
+Errors arrive as `{"error":{"code","message"}}`. Mapping: `invalid_api_key`, `auth_required` or `401/403`
+→ **`auth`** error (alert with the API code; generic user message; logged `api_status = "auth:<code>"`).
+An auth failure is never shown or logged as "no postcode here" / "not found" (a 404 carrying an auth code
+is auth, not not-found); `402` → credits error; `level_not_granted` → its own error kind (we only
 call level 1, so it signals a config bug); `429` → wait and retry once after 2 s; timeout (5 s) →
 "service is slow, try again"; `404` on lookup → not found.
 
@@ -411,10 +428,13 @@ The Twilio echo prototype is kept in `archive/twillo_echo.py`.
   Eval acceptance: ≥ 85% routed intent accuracy on 40 held-out cases.
 - 2026-10-08: Explain becomes FAQ routing (`faq_id` in the intent schema, 8 FAQ templates, `EXPLAIN_MODE`
   default `faq`; generate mode kept, off). Guard rejects unknown capitalised words. LLM timeout 20 s with
-  `warming_up` template; `GET /api/warm`; `scripts/warm.sh`. Fonts self-hosted and subset (117.4 KB);
+  `warming_up` template; `GET /api/warm`; `scripts/warm.sh`. Fonts self-hosted and subset;
   budget HTML+CSS+JS < 50 KB, fonts < 120 KB. Fact sheets out of the review flow.
 - 2026-10-09: ASR revisions pinned; ASR cold/warm timings. New routes `/api/strings/<lang>` and
   `/api/location-denied`. Dev runs (`VP_ENV=dev`) log to `/logs/dev/`.
+- 2026-10-09: Postcode `auth` error kind (`invalid_api_key`, `auth_required`, 401/403) never reads as not
+  found. `Reply.distance_m`. Street/name rule → `faq_place_name_no`. Page labels as template keys (24:
+  `ui_*`, `chip`, `conf_*`), first-screen rules, measured page weight; JetBrains Mono 500 dropped (unused).
 - 2026-10-08: Web page contract: match `web/design/prototype.html` exactly (phone screen only). Glyph
   coverage table and unicode-range fallback rule. Open question on font transfer size vs the 50 KB budget.
   30-minute TTL for unconsented sessions (implemented in `main.py`).

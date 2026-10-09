@@ -112,3 +112,28 @@ FAQ_CASES: dict[str, list[tuple[str, str]]] = {
     ],
 }
 FAQ_EQUIVALENT_INTENTS = {"get_mine": "get_my_postcode", "check_one": "validate_postcode"}
+
+# Street / place-name questions (faq place_name_no): the 4 FAQ_CASES that missed on 8 Oct plus 8 new ones.
+# Expected route: explain_postcode + place_name_no (via the LLM, or the street/name rule in resolve_route).
+PLACE_NAME_CASES: dict[str, list[str]] = {
+    "en": [
+        EXPLAIN_CASES["en"][1],
+        "My street is Adeola Odeku, what is my postcode?",
+        "what is the postcode for 12 Bode Thomas road",
+    ],
+    "yo": [
+        EXPLAIN_CASES["yo"][1],
+        "Orúkọ òpópónà mi ni Allen, kí ni pósíkòdì mi?",
+        "ṣe o le wa posikodi mi pelu oruko adugbo mi",
+    ],
+    "ha": [
+        EXPLAIN_CASES["ha"][1],
+        "Titina shi ne Zoo Road, menene postcode dina?",
+        "sunan unguwata sabon gari ina postcode dina",
+    ],
+    "ig": [
+        EXPLAIN_CASES["ig"][1],
+        "Aha okporo ụzọ m bụ Ogui Road, kedu postcode m?",
+        "enwere m ike inye gi aha obodo m ka i choputa postcode m",
+    ],
+}

@@ -208,6 +208,10 @@ def test_eval_cases_are_held_out_from_few_shot() -> None:
     assert len(faq) == 20 and all(len(rows) == 5 for rows in FAQ_CASES.values())
     assert {fid for rows in FAQ_CASES.values() for _, fid in rows} <= set(prompts.FAQ_IDS)
     assert not shots & {fold(text) for text in faq}
+    from evals.cases import PLACE_NAME_CASES
+
+    place = [text for rows in PLACE_NAME_CASES.values() for text in rows]
+    assert len(place) == 12 and not shots & {fold(text) for text in place}
     assert len(cases) == 40 and all(len(rows) == 10 for rows in INTENT_CASES.values())
     assert all(len(qs) == 3 for qs in EXPLAIN_CASES.values())
     assert not shots & {fold(text) for text in cases}

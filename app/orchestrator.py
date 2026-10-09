@@ -65,11 +65,11 @@ POSTCODE_ERROR_TEMPLATES = {
     "timeout": "error_slow",
     "rate_limited": "error_slow",
     "unavailable": "error_unavailable",
-    "config": "error_generic",
+    "auth": "error_generic",  # never "no postcode here": the key is wrong, not the location
     "credits": "error_generic",
     "level_not_granted": "error_generic",
 }
-ALERT_KINDS = {"config", "credits", "level_not_granted"}  # our setup is wrong, not the user's input
+ALERT_KINDS = {"auth", "credits", "level_not_granted"}  # our setup is wrong, not the user's input
 ASR_ERROR_TEMPLATES = {
     "too_long": "audio_too_long",
     "bad_audio": "not_heard",
@@ -120,6 +120,24 @@ def resolve_intent(text: str, result: IntentResult | None) -> Intent:
     if result is not None and (result.confidence is None or result.confidence >= LOW_CONFIDENCE):
         intent = result.intent
     return safety_net(text) if intent == "other" else intent
+
+
+# "Can you find it from my street / place name?": a get_my_postcode request that names a street, road or
+# "name" is answered with faq_place_name_no (say plainly we cannot, offer the location button).
+_STREET_OR_NAME_RE = re.compile(
+    r"\b(?:street|road|avenue|crescent|name|opopona|oruko|titi\w*|sunan?|okporo uzo|aha)\b"
+)
+
+
+def resolve_route(text: str, result: IntentResult | None) -> tuple[Intent, str | None]:
+    """(intent, faq_id) the orchestrator acts on. resolve_intent, then the street/name rule. Shared with
+    evals so nothing is copied."""
+    intent = resolve_intent(text, result)
+    if intent == "get_my_postcode" and _STREET_OR_NAME_RE.search(fold(text)):
+        return "explain_postcode", "place_name_no"
+    if intent == "explain_postcode":
+        return intent, result.faq_id if result else None
+    return intent, None
 
 
 def log_event(event: str, **fields: Any) -> None:
@@ -295,6 +313,7 @@ class Orchestrator:
             postcode=result.postcode,
             segments=segs,
             confidence=confidence,  # type: ignore[arg-type]
+            distance_m=result.distance_m,
         )
 
     async def _voice(self, event: Event, s: Session, turn: _Turn, lang: Lang) -> Reply:
@@ -338,7 +357,7 @@ class Orchestrator:
             log_event("llm_error", stage="intent", status=turn.llm_status, error=type(exc).__name__)
         finally:
             turn.latency.llm = _ms(start)
-        intent = resolve_intent(text, result)
+        intent, faq_id = resolve_route(text, result)
         # The log keeps the routed intent; on LLM failure it is "other" (llm_status says why).
         turn.intent = "other" if result is None else intent
 
@@ -349,7 +368,7 @@ class Orchestrator:
         if intent == "explain_postcode":
             if self.explain_mode == "generate":
                 return await self._explain(text, s, turn, lang)
-            return self._faq(result.faq_id if result else None, s, turn, lang)
+            return self._faq(faq_id, s, turn, lang)
         if result is None and turn.llm_status == "timeout":  # cold GPU and the keyword net found nothing
             return self._error(lang, "warming_up")
         return self._menu(lang)
@@ -435,9 +454,11 @@ class Orchestrator:
         return Reply(kind="error", lang=lang, text=self._t(lang, key))
 
     def _postcode_error(self, lang: Lang, exc: PostcodeError, turn: _Turn) -> Reply:
-        turn.api_status = exc.kind
+        # The API's own error code is kept (e.g. "auth:invalid_api_key") so the log never confuses a key
+        # problem with "no postcode at this location".
+        turn.api_status = f"{exc.kind}:{exc.code}" if exc.code else exc.kind
         if exc.kind in ALERT_KINDS:
-            log_event("alert", source="postcode_api", kind=exc.kind)
+            log_event("alert", source="postcode_api", kind=exc.kind, code=exc.code)
         return self._error(lang, POSTCODE_ERROR_TEMPLATES.get(exc.kind, "error_generic"))
 
     def _with_feedback(self, lang: Lang, lines: list[str]) -> str:

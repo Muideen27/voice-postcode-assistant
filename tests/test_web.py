@@ -71,6 +71,7 @@ def test_reply_is_returned_as_json(web: Any) -> None:
         "segments": None,
         "confidence": None,
         "transcript": None,
+        "distance_m": None,
     }
 
 

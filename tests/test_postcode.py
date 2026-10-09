@@ -213,7 +213,7 @@ def test_auth_required_is_config_error(status: int) -> None:
     client = make_client(lambda r: httpx.Response(status, json=fixture("error_auth_required.json")))
     with pytest.raises(PostcodeError) as err:
         run(client.reverse(6.6, 3.3))
-    assert err.value.kind == "config"
+    assert err.value.kind == "auth"
 
 
 # ---------------------------------------------------------------- error mapping
@@ -221,7 +221,7 @@ def test_auth_required_is_config_error(status: int) -> None:
 
 @pytest.mark.parametrize(
     ("status", "kind"),
-    [(401, "config"), (403, "config"), (402, "credits"), (500, "unavailable"), (503, "unavailable")],
+    [(401, "auth"), (403, "auth"), (402, "credits"), (500, "unavailable"), (503, "unavailable")],
 )
 def test_http_errors_map_to_kinds(status: int, kind: str) -> None:
     client = make_client(lambda r: httpx.Response(status, json={"error": {"code": "x"}}))
@@ -278,3 +278,15 @@ def test_non_json_body_maps_to_unavailable() -> None:
 
 def test_default_timeout_is_5s() -> None:
     assert PostcodeClient(api_key="k").timeout_s == 5.0
+
+
+INVALID_KEY = {"error": {"code": "invalid_api_key", "message": "the provided API key is invalid or revoked"}}
+
+
+@pytest.mark.parametrize("status", [200, 401, 404])
+def test_invalid_api_key_is_auth_never_not_found(status: int) -> None:
+    client = make_client(lambda r: httpx.Response(status, json=INVALID_KEY))
+    for call in (client.reverse(6.6, 3.3), client.lookup(VALID)):
+        with pytest.raises(PostcodeError) as err:
+            run(call)
+        assert (err.value.kind, err.value.code) == ("auth", "invalid_api_key")

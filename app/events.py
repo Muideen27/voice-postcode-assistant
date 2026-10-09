@@ -54,3 +54,4 @@ class Reply:
     segments: list[tuple[str, str]] | None = None  # [("LA", "Lagos State"), ...] labels from templates
     confidence: Confidence | None = None
     transcript: str | None = None  # shown to user as "We heard: ..."
+    distance_m: float | None = None  # reverse-geocode distance, for the confidence chip

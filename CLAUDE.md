@@ -69,7 +69,8 @@ One core, thin channel. All logic lives in the orchestrator; the channel only tr
    -> feedback.
 3. **Voice note** -> ASR (chosen language) -> same path as text.
 4. **Text** -> LLM intent JSON (+ postcode regex and keyword safety net) ->
-   - `get_my_postcode` -> ask for location (place names alone cannot give a building code at L1)
+   - `get_my_postcode` -> ask for location (place names alone cannot give a building code at L1);
+     if it names a street, road or "name" -> `faq_place_name_no` instead
    - `validate_postcode` -> regex-extract and normalise code -> `lookup(level=1)` -> valid / not found;
      no code in the text -> `ask_code` (offers both: send the code, or share location)
    - `explain_postcode` -> FAQ routing: the intent call also returns `faq_id`; the reply is the reviewed
@@ -108,9 +109,9 @@ app/
 data/
   states.json          (exists) state codes -> names, documented codes only (11 so far)
   fact_sheet_<lang>.md (exists) source facts for the faq_* templates; sent to the model only in generate mode
-web/index.html         (planned) low-bandwidth page, no frameworks; must match web/design/prototype.html
+web/index.html         (exists) the page (19.6 KB, 6.5 KB gzip), no frameworks; matches web/design/prototype.html
 web/design/prototype.html (exists) design source of truth (phone screen of the Prototype tab only)
-web/fonts/*.woff2      (exists) self-hosted subset fonts (117.4 KB), built by scripts/build_fonts.py
+web/fonts/*.woff2      (exists) self-hosted subset fonts (5 files, 101.3 KiB), built by scripts/build_fonts.py
 deploy/
   natlas_serve.py      (exists) vLLM on L4, OpenAI-compatible, API-key protected
 tests/                 unit tests only: no network, run by `pytest -q`
@@ -137,11 +138,14 @@ scripts/
   apply_review.py      (exists) filled docs/review/<lang>.csv -> templates, clears _todo_review
   build_fonts.py       (exists) download + subset fonts into web/fonts/ (dev: fonttools, brotli)
   warm.sh              (exists) keep one N-ATLaS GPU warm for a pilot window, then back to 0
+  ui_screens.py        (exists) 360 px screenshots, live page vs prototype -> docs/ui-compare/
 archive/
   twillo_echo.py       (archived) Twilio WhatsApp echo prototype, see Future work
 docs/                  submission PDFs (integration evidence, validation, technical docs, team)
   review/<lang>.csv    (exists) review sheets for yo, ha, ig (all strings except faq_*)
   review/faq_<lang>.csv (exists) short FAQ-answer review sheets
+  review/ui_<lang>.csv (exists) page-label review sheets (ui_*, chip, conf_*)
+  ui-compare/          (exists) live vs prototype screenshots + README table
 SPEC.md                (exists) stack, pinned versions, constraints, component contracts
 pyproject.toml         (exists) ruff + pytest config
 requirements.txt       (exists) pinned app dependencies (vllm pinned in deploy/natlas_serve.py)
@@ -230,7 +234,8 @@ Quality: Yoruba and Hausa good, Igbo weaker (label it beta). Place names come ou
 - **Web page contract.** The web page must match `web/design/prototype.html` exactly: colours, fonts, layout, spacing, components and screen order. Do not redesign it. Use only the phone screen from the Prototype tab (leave out the tabs, trace panel, dashboard and flow view). Keep its `:root` tokens (light and dark), its fonts (Bricolage Grotesque display, Atkinson Hyperlegible body, JetBrains Mono for codes) and its class names. Strings come from `app/templates`, data from `/api/*`. When the page is built, put 360 px screenshots of each screen next to the prototype's in `docs/ui-compare/`. Glyph gaps and the fallback rule are in SPEC.md §1 Front end.
 - **Template keys are frozen** (8 Oct, for the native-speaker review). Do not add, rename or remove a
   key without asking the user first. Changing English wording also needs the review sheets regenerated.
-  Approved exceptions so far: the 8 `faq_*` keys and `warming_up` (8 Oct).
+  Approved exceptions so far: the 8 `faq_*` keys and `warming_up` (8 Oct); 24 page-label keys `ui_*`,
+  `chip`, `conf_*` (9 Oct). The freeze applies again after these.
 - Store user text only through `app.privacy.for_storage()` (scrubbed: numbers, phones, emails; capped at
   300 chars). Raw text may be used inside the turn (regex, intent) but never stored.
 - Language codes everywhere: `en`, `yo`, `ha`, `ig`.
@@ -301,3 +306,5 @@ account is locked. The Twilio echo prototype is kept in `archive/twillo_echo.py`
   `warming_up`; `/api/warm`; `scripts/warm.sh`. Self-hosted subset fonts in `web/fonts/`.
 - 2026-10-09: `asr.py` (pinned revisions, ffmpeg pipes, 20 s limit, silence skip), `channels/web.py`,
   `main.py` (Modal wiring, 30-min TTL sweep for unconsented sessions, `VP_ENV=dev` log isolation).
+- 2026-10-09: `web/index.html` from the prototype; 24 page-label keys (approved); street/name rule; Postcode
+  `auth` errors kept apart from not-found; screenshots in `docs/ui-compare/`.
