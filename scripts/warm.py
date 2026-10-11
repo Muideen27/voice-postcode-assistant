@@ -2,6 +2,7 @@
 
 Use scripts/warm.sh (it activates nothing; run inside the venv):
     scripts/warm.sh 90        # min_containers=1 on both for 90 minutes, then 0
+    scripts/warm.sh 17:00     # until 17:00 WAT today (long windows: up to 12 hours)
     scripts/warm.sh off       # set both back to 0 now
 
 Sets min_containers=1 on natlas-serve/serve and on voice-postcode/AsrModel, pings both until they answer and
@@ -14,10 +15,13 @@ import signal
 import sys
 import time
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import httpx
 import modal
+
+WAT = timezone(timedelta(hours=1), "WAT")
 
 ROOT = Path(__file__).resolve().parents[1]
 NATLAS_URL = os.environ.get("NATLAS_URL", "https://muideen27--natlas-serve-serve.modal.run")
@@ -67,13 +71,26 @@ def ping_asr() -> float:
     return time.perf_counter() - start
 
 
+MAX_MINUTES = 12 * 60
+
+
+def window_minutes(arg: str, now: datetime | None = None) -> int:
+    """'90' -> 90 minutes; '17:00' -> minutes until 17:00 WAT today (must be later today)."""
+    if ":" not in arg:
+        return int(arg)
+    now = now or datetime.now(WAT)
+    hour, minute = (int(x) for x in arg.split(":", 1))
+    end = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
+    return max(0, round((end - now).total_seconds() / 60))
+
+
 def main(argv: list[str]) -> None:
     if argv and argv[0] == "off":
         set_min(0)
         return
-    minutes = int(argv[0]) if argv else 60
-    if not 1 <= minutes <= 480:
-        sys.exit("minutes must be 1..480")
+    minutes = window_minutes(argv[0]) if argv else 60
+    if not 1 <= minutes <= MAX_MINUTES:
+        sys.exit(f"window must be 1..{MAX_MINUTES} minutes (or an end time later today, WAT)")
 
     signal.signal(signal.SIGTERM, lambda *_: sys.exit(143))  # kill -> finally -> reset to 0
     try:

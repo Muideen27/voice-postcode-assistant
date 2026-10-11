@@ -147,11 +147,38 @@ def test_index_fonts_and_strings(web: Any) -> None:
     assert client.get("/api/strings/fr").status_code == 404
 
 
-def test_warm_returns_at_once_and_runs_warmers(web: Any) -> None:
-    client, _, warmed = web
-    assert client.get("/api/warm").status_code == 204
-    client.get("/")  # give the event loop a turn
-    assert warmed == ["gpu"]
+def test_warm_reports_readiness_and_starts_warmers_only_when_cold(tmp_path: Path) -> None:
+    (tmp_path / "index.html").write_text("x")
+    state = {"llm": False, "asr": True}
+    started: list[str] = []
+
+    async def warmer() -> None:
+        started.append("gpu")
+
+    async def ready() -> dict[str, bool]:
+        return dict(state)
+
+    with TestClient(create_api(Recorder(), "salt", tmp_path, T, warmers=[warmer], readiness=ready)) as client:
+        assert client.get("/api/warm").json() == {"llm": False, "asr": True}
+        assert client.get("/api/warm").json() == {"llm": False, "asr": True}  # cooldown: no second warm-up
+        state["llm"] = True
+        assert client.get("/api/warm").json() == {"llm": True, "asr": True}
+    assert started == ["gpu"]
+
+
+def test_warm_never_hangs_on_a_slow_readiness_check(tmp_path: Path) -> None:
+    import time
+
+    (tmp_path / "index.html").write_text("x")
+
+    async def slow() -> dict[str, bool]:
+        await asyncio.sleep(30)
+        return {"llm": True, "asr": True}
+
+    with TestClient(create_api(Recorder(), "salt", tmp_path, T, readiness=slow)) as client:
+        started = time.perf_counter()
+        assert client.get("/api/warm").json() == {"llm": False, "asr": False}
+        assert time.perf_counter() - started < 4
 
 
 def test_on_start_jobs_run_when_the_app_starts(tmp_path: Path) -> None:
@@ -181,7 +208,7 @@ def test_slow_startup_jobs_never_block_the_page(tmp_path: Path) -> None:
         assert time.perf_counter() - started < 2.0
 
 
-def test_stats_route_and_optional_asset(tmp_path: Path) -> None:
+def test_stats_route(tmp_path: Path) -> None:
     (tmp_path / "index.html").write_text("x")
 
     async def stats() -> dict[str, Any]:
@@ -189,9 +216,5 @@ def test_stats_route_and_optional_asset(tmp_path: Path) -> None:
 
     client = TestClient(create_api(Recorder(), "salt", tmp_path, T, stats=stats))
     assert client.get("/api/stats").json() == {"kpis": {"interactions": 0}}
-    assert client.get("/assets/footer.webp").status_code == 404  # missing file: the page hides the slot
-    (tmp_path / "assets").mkdir()
-    (tmp_path / "assets" / "footer.webp").write_bytes(b"RIFF....WEBP")
-    assert client.get("/assets/footer.webp").headers["content-type"] == "image/webp"
-    assert client.get("/assets/../index.html").status_code == 404
+    assert client.get("/assets/footer.webp").status_code == 404  # no image slot: text attribution only
     assert TestClient(create_api(Recorder(), "salt", tmp_path, T)).get("/api/stats").status_code == 404

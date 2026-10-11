@@ -60,9 +60,8 @@ table{border-collapse:collapse;width:100%;font-size:.86rem;font-variant-numeric:
 th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
 th{font-size:.75rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:700}
 .note{font-size:.82rem;color:var(--muted);margin:0}
-/* App-only rules: .app replaces the decorative phone frame; .foot img is the optional footer image slot. */
+/* App-only rule: .app replaces the decorative phone frame. */
 .app{max-width:370px;margin:0 auto;width:100%}
-.foot img{display:block;margin:8px auto 0;max-width:100%;height:auto}
 .screen{background:var(--panel);border-radius:28px;min-height:610px;padding:22px 18px 16px;display:flex;flex-direction:column;gap:14px;position:relative;overflow:hidden}
 .bar{display:flex;justify-content:space-between;align-items:center;font-size:.8rem;color:var(--muted)}
 .bar b{font-family:var(--font-display);color:var(--ink);font-size:1rem}
@@ -134,6 +133,9 @@ const ORDER = ["en", "yo", "ha", "ig"];           /* prototype order on the lang
 const S = {};                                      /* strings per language, from /api/strings/<lang> */
 const $s = document.getElementById("screen");
 let lang = null, ui = null, session = null, voted = false;
+let gpu = {llm: false, asr: false};                /* readiness from /api/warm */
+const CODE_RE = /\b[A-Za-z]{2}[\s-]?\d{2}[\s-]?[A-Za-z0-9]{3}[\s-]?[A-Za-z]{2}[\s-]?\d{2}\b/;
+const sleep = ms => new Promise(r => setTimeout(r, ms));
 const esc = v => String(v).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const fill = (t, vals) => t.replace(/\{(\w+)\}/g, (m, k) => k in vals ? vals[k] : m);
 const lines = t => String(t || "").split("\n").filter(Boolean);
@@ -170,8 +172,27 @@ function wire(){ const b = document.getElementById("b-lang"); if(b) b.onclick = 
 function paint(html){ $s.innerHTML = bar() + html; wire(); }
 function waiting(msg){ paint(`<div class="pulse"><span></span></div><p class="s-title center">${esc(msg)}</p><p class="s-text center" id="wake"></p>`); }
 
-function foot(text){
-  return `<p class="foot">${esc(text)}<img src="/assets/footer.webp" width="300" height="196" alt="${esc(ui.ui_footer_alt)}" loading="lazy" onerror="this.remove()"></p>`;
+function foot(text){ return `<p class="foot">${esc(text)}</p>`; }  /* text attribution only */
+
+/* cold start: the page asks /api/warm on load (it wakes both GPUs) and polls while one is cold. A voice or
+   text turn that needs a cold model waits here, on the progress screen, up to 180 s. Location and messages
+   that contain a postcode never wait: they do not use the language model. */
+async function refreshWarm(){
+  try{ const r = await fetch("/api/warm", {cache: "no-store"}); if(r.ok) gpu = await r.json(); }catch(e){}
+  return gpu;
+}
+async function whenReady(needs){
+  if(needs.every(k => gpu[k])) return;
+  const w = document.getElementById("wake"); if(w) w.textContent = ui.warming_up_long;
+  const end = Date.now() + 180000;
+  while(Date.now() < end){
+    await sleep(8000);
+    await refreshWarm();
+    if(needs.every(k => gpu[k])) return;
+  }
+}
+async function pollWarm(){
+  for(let i = 0; i < 40 && !(gpu.llm && gpu.asr); i++){ await refreshWarm(); if(gpu.llm && gpu.asr) break; await sleep(15000); }
 }
 
 /* 1. language (prototype screen; title and intro in the browser's language until one is picked) */
@@ -243,8 +264,11 @@ async function record(){
     stream.getTracks().forEach(t => t.stop()); clearTimeout(cap);
     const blob = new Blob(chunks, {type: rec.mimeType || type || "audio/webm"});
     waiting(ui.ui_working);
-    const f = new FormData(); f.append("session", session); f.append("audio", blob, "note");
-    render(await call("/api/voice", f, true));
+    await whenReady(["asr"]);  /* a spoken postcode needs only ASR, never the language model */
+    const send = () => { const f = new FormData(); f.append("session", session); f.append("audio", blob, "note"); return call("/api/voice", f, true); };
+    let reply = await send();
+    if(lines(reply.text).includes(ui.warming_up) && !gpu.llm){ waiting(ui.ui_working); await whenReady(["llm"]); reply = await send(); }
+    render(reply);
   };
   rec.start();
   const cap = setTimeout(() => rec.state === "recording" && rec.stop(), 20000);
@@ -270,6 +294,7 @@ function wireForm(){
     const text = box.value.trim();
     if(!text){ err.textContent = ui.ui_empty; box.focus(); return; }
     waiting(ui.ui_working);
+    if(!CODE_RE.test(text)) await whenReady(["llm"]);  /* a code check goes straight to the Postcode API */
     render(await call("/api/text", {text}), text);
   };
 }
@@ -385,7 +410,7 @@ async function loadStats(){
 /* start: wake the GPUs, load the four languages, show the language screen */
 const nav = (navigator.language || "en").slice(0, 2).toLowerCase();
 const pageLang = ORDER.includes(nav) ? nav : "en";
-fetch("/api/warm").catch(() => {});
+pollWarm();
 Promise.all(ORDER.map(k => fetch("/api/strings/" + k).then(r => r.json()).then(j => { S[k] = j; })))
   .then(() => {
     ui = S[pageLang]; showLang();

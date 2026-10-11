@@ -127,6 +127,14 @@ class NatlasClient:
         except httpx.HTTPError as exc:
             print(json.dumps({"event": "llm_warm_error", "error": type(exc).__name__}))
 
+    async def ready(self, timeout_s: float = 2.5) -> bool:
+        """True if the LLM answers /v1/models within timeout_s (warm); False while it is cold or starting."""
+        try:
+            response = await self._http.get("/v1/models", timeout=timeout_s)
+        except httpx.HTTPError:
+            return False
+        return response.status_code == 200
+
     async def aclose(self) -> None:
         await self._http.aclose()
 

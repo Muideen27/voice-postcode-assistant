@@ -107,8 +107,13 @@ database today: OK | no data | unreachable" from today's canary; the last 10 row
 input, intent, postcode outcome, latency, feedback). Before `PILOT_START` (env, ISO time, set at deploy)
 it shows zeros and "—". No sample data anywhere.
 
-**Footer image slot.** Under the N-ATLaS attribution: `web/assets/footer.webp`, width/height set, alt text
-from `ui_footer_alt`, < 15 KB, removed from the page if the file is missing.
+**Footer.** Text attribution only (no image).
+
+**Cold start on the page.** A voice or text turn that needs a cold model waits on the progress screen with
+`warming_up_long` ("Waking up the language model, about 2 minutes, the first time only"), polling
+`/api/warm`, up to 180 s, then sends. Voice waits only for ASR (a spoken postcode never needs the LLM); if the
+reply is `warming_up` it waits for the LLM and re-sends the same recording once. Typed text containing a
+postcode and location never wait.
 
 **Web page contract.** The web page must match `web/design/prototype.html` exactly: colours, fonts, layout, spacing, components and screen order. Do not redesign it. Use only the phone screen from the Prototype tab (leave out the tabs, trace panel, dashboard and flow view). Keep its `:root` tokens (light and dark), its fonts (Bricolage Grotesque display, Atkinson Hyperlegible body, JetBrains Mono for codes) and its class names. Strings come from `app/templates`, data from `/api/*`. When the page is built, put 360 px screenshots of each screen next to the prototype's in `docs/ui-compare/`.
 
@@ -340,8 +345,7 @@ postcode database yet…".
 | `GET /api/strings/<lang>` | none | every template string for that language (the page renders only these) |
 | `POST /api/location-denied` | `{"session"}` | `Reply` (`error`, `location_denied`): geolocation refused or failed |
 | `GET /api/stats` | none | pilot dashboard JSON (KPIs, bars, last 10 rows, today's canary); real log rows from `PILOT_START` only, `/logs/dev/` excluded; 60 s cache; never transcripts or user hashes |
-| `GET /assets/<name>.webp` | none | optional image (footer); 404 when absent, the page hides the slot |
-| `GET /api/warm` | none | `204` at once; starts a 1-token LLM request in the background (not awaited) so the GPU wakes while the user picks a language. Called once per page load. |
+| `GET /api/warm` | none | `{"llm": bool, "asr": bool}` (readiness, ~1 s warm, a few s while cold); if either is cold, starts both warm-ups in the background (not again within 120 s). The page calls it on load and polls while something is cold. |
 | `POST /api/language` | `{"session":"<uuid>","lang":"yo"}` | `Reply` (`welcome` with consent for a new user, else `menu`) |
 | `POST /api/consent` | `{"session","agree":true\|false}` | `Reply` (`ask_knew_before`, or `declined`) |
 | `POST /api/location` | `{"session","lat","lng","accuracy_m"}` | `Reply` (postcode) |
@@ -463,6 +467,8 @@ The Twilio echo prototype is kept in `archive/twillo_echo.py`.
   budget HTML+CSS+JS < 50 KB, fonts < 120 KB. Fact sheets out of the review flow.
 - 2026-10-09: ASR revisions pinned; ASR cold/warm timings. New routes `/api/strings/<lang>` and
   `/api/location-denied`. Dev runs (`VP_ENV=dev`) log to `/logs/dev/`.
+- 2026-10-11: Footer image slot and `ui_footer_alt` removed (text attribution only). `/api/warm` returns
+  readiness; page holds cold turns with `warming_up_long`. Submission docs and PDF build scripts.
 - 2026-10-11: `/api/stats` + dashboard tab (`PILOT_START`), `/assets/` footer slot (`ui_footer_alt`),
   startup rule (background jobs with timeouts, canary 15 s cap), web `min_containers=1` (cold CPU start
   6-14 s measured, memory snapshot did not help). Secrets: re-deploy after re-creating a secret.

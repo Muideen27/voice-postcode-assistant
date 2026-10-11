@@ -10,7 +10,7 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Annotated, Any
 
-from fastapi import FastAPI, File, Form, HTTPException, Response, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, Field
 
@@ -20,8 +20,8 @@ from app.store import hash_user
 
 _UUID_RE = re.compile(r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}")
 _FONT_RE = re.compile(r"[a-z0-9-]+\.woff2")
-_ASSET_RE = re.compile(r"[a-z0-9-]+\.webp")
 FONT_CACHE = "public, max-age=31536000, immutable"
+WARM_COOLDOWN_S = 120.0  # a warm-up request already waits out a full cold start
 MAX_TEXT = 500
 
 Handler = Callable[[Event], Awaitable[Reply]]
@@ -69,6 +69,7 @@ def create_api(
     warmers: list[Warmer] | None = None,
     on_start: list[Warmer] | None = None,
     stats: Callable[[], Awaitable[dict[str, Any]]] | None = None,
+    readiness: Callable[[], Awaitable[dict[str, bool]]] | None = None,
 ) -> FastAPI:
     background: set[asyncio.Task[Any]] = set()  # keep references so background tasks are not collected
 
@@ -112,14 +113,6 @@ def create_api(
             raise HTTPException(status_code=404)
         return FileResponse(path, media_type="font/woff2", headers={"Cache-Control": FONT_CACHE})
 
-    @api.get("/assets/{name}")
-    async def asset(name: str) -> FileResponse:
-        """Optional images (web/assets/footer.webp). Missing file -> 404 and the page hides the slot."""
-        path = web_dir / "assets" / name
-        if not _ASSET_RE.fullmatch(name) or not path.is_file():
-            raise HTTPException(status_code=404)
-        return FileResponse(path, media_type="image/webp", headers={"Cache-Control": "public, max-age=86400"})
-
     @api.get("/api/stats")
     async def pilot_stats() -> JSONResponse:
         """Pilot dashboard numbers (real log rows from PILOT_START only; never transcripts or user hashes)."""
@@ -134,12 +127,24 @@ def create_api(
             raise HTTPException(status_code=404)
         return JSONResponse(templates[lang], headers={"Cache-Control": "public, max-age=300"})
 
-    @api.get("/api/warm", status_code=204)
-    async def warm() -> Response:
-        """Start the GPUs in the background and return at once; the page calls this on load."""
-        for warmer in warmers or []:
-            spawn(warmer)
-        return Response(status_code=204)
+    last_warm = {"at": -WARM_COOLDOWN_S}
+
+    @api.get("/api/warm")
+    async def warm() -> JSONResponse:
+        """Which GPUs are ready ({"llm", "asr"}), bounded to ~3 s. If either is cold, start the warm-ups in
+        the background (not again within WARM_COOLDOWN_S). The page polls this while something is cold."""
+        status = {"llm": True, "asr": True}
+        if readiness is not None:
+            try:
+                status = await asyncio.wait_for(readiness(), 3.0)
+            except Exception:
+                status = {"llm": False, "asr": False}
+        loop_now = asyncio.get_running_loop().time()
+        if not all(status.values()) and loop_now - last_warm["at"] >= WARM_COOLDOWN_S:
+            last_warm["at"] = loop_now
+            for warmer in warmers or []:
+                spawn(warmer)
+        return JSONResponse(status, headers={"Cache-Control": "no-store"})
 
     # ---------------------------------------------------------------- conversation
 

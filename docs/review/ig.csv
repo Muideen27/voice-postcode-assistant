@@ -43,3 +43,4 @@ thanks,Thank you for your feedback!,Daalụ maka nzaghachi gị!,,
 decline_button,"No, thanks","Mba, daalụ",,Button label: keep it short.
 ask_code,"Say or type the postcode you want to check, or tap ""Get my postcode"" to share your location and find your postcode.","Kwuo ma ọ bụ dee postcode ị chọrọ ilele, ma ọ bụ pịa ""Nweta postcode m"" iji zipu ebe ị nọ ma chọta postcode gị.",,A quoted button name must match that button's text in your language (btn_* rows).
 warming_up,The assistant is still waking up. Please try again in a minute.,Onye enyemaka ka na-eteta. Biko nwaa ọzọ mgbe otu nkeji gasịrị.,,
+warming_up_long,"Waking up the language model, about 2 minutes, the first time only.","Anyị na-akpọte usoro asụsụ, ihe dị ka nkeji abụọ, naanị na nke mbụ.",,

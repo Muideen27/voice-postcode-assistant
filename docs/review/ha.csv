@@ -43,3 +43,4 @@ thanks,Thank you for your feedback!,Na gode da ra'ayinka!,,
 decline_button,"No, thanks","A'a, na gode",,Button label: keep it short.
 ask_code,"Say or type the postcode you want to check, or tap ""Get my postcode"" to share your location and find your postcode.","Faɗi ko rubuta postcode da kake so a duba, ko ka danna ""Samo postcode ɗina"" don aika wurinka ka sami postcode ɗinka.",,A quoted button name must match that button's text in your language (btn_* rows).
 warming_up,The assistant is still waking up. Please try again in a minute.,Mataimakin yana farkawa har yanzu. Don Allah ka sake gwadawa bayan minti ɗaya.,,
+warming_up_long,"Waking up the language model, about 2 minutes, the first time only.","Ana tayar da tsarin harshe, kusan minti biyu, a karon farko kawai.",,

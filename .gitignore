@@ -10,3 +10,4 @@ __pycache__/
 models/
 llama.cpp/
 .font-src/
+docs/submission/build/

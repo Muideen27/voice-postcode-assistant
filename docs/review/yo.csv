@@ -43,3 +43,4 @@ thanks,Thank you for your feedback!,Ẹ ṣé fún èsì yín!,,
 decline_button,"No, thanks","Rárá, ẹ ṣé",,Button label: keep it short.
 ask_code,"Say or type the postcode you want to check, or tap ""Get my postcode"" to share your location and find your postcode.","Ẹ sọ tàbí kọ pósíkòdì tí ẹ fẹ́ ṣàyẹ̀wò, tàbí ẹ tẹ ""Gba pósíkòdì mi"" láti fi ibi tí ẹ wà ránṣẹ́ kí ẹ sì rí pósíkòdì yín.",,A quoted button name must match that button's text in your language (btn_* rows).
 warming_up,The assistant is still waking up. Please try again in a minute.,Olùrànlọ́wọ́ náà ṣì ń jí. Ẹ jọ̀wọ́ tún gbìyànjú lẹ́yìn ìṣẹ́jú kan.,,
+warming_up_long,"Waking up the language model, about 2 minutes, the first time only.","A ń jí àwòṣe èdè náà, ó lè tó ìṣẹ́jú méjì, ní ìgbà àkọ́kọ́ nìkan.",,

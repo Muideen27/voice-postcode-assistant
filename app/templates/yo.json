@@ -76,7 +76,7 @@
     "conf_high",
     "conf_medium",
     "conf_low",
-    "ui_footer_alt"
+    "warming_up_long"
   ],
   "language_name": "Yorùbá",
   "attribution": "N-ATLaS is an initiative of the Federal Ministry of Communications, Innovation and Digital Economy, and powered by Awarri Technologies.",
@@ -155,5 +155,5 @@
   "conf_high": "Ìgbẹ́kẹ̀lé gíga",
   "conf_medium": "Ìgbẹ́kẹ̀lé àárín",
   "conf_low": "Ìgbẹ́kẹ̀lé kékeré",
-  "ui_footer_alt": "Àmì: Federal Ministry of Communications, Innovation and Digital Economy, NCAIR àti ONDI. NITDA National AI Innovation Challenge."
+  "warming_up_long": "A ń jí àwòṣe èdè náà, ó lè tó ìṣẹ́jú méjì, ní ìgbà àkọ́kọ́ nìkan."
 }

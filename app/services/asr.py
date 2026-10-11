@@ -112,6 +112,14 @@ async def warm_asr() -> None:
         print(json.dumps({"event": "asr_warm_error", "error": type(exc).__name__}))
 
 
+async def asr_ready(timeout_s: float = 2.5) -> bool:
+    """True if an ASR container answers ping within timeout_s (models loaded); False while cold."""
+    try:
+        return bool(await asyncio.wait_for(AsrModel().ping.remote.aio(), timeout_s))
+    except Exception:
+        return False
+
+
 # ---------------------------------------------------------------- GPU side (Modal)
 
 asr_app = modal.App("voice-postcode-asr")

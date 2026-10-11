@@ -111,8 +111,7 @@ app/
 data/
   states.json          (exists) state codes -> names, documented codes only (11 so far)
   fact_sheet_<lang>.md (exists) source facts for the faq_* templates; sent to the model only in generate mode
-web/index.html         (exists) the page + pilot dashboard tab (27.1 KB, 8.7 KB gzip); matches the prototype
-web/assets/footer.webp (slot) optional footer image under the attribution; < 15 KB; hidden if missing
+web/index.html         (exists) the page + pilot dashboard tab (28 KB, 9 KB gzip); text attribution only
 web/design/prototype.html (exists) design source of truth (phone screen of the Prototype tab only)
 web/fonts/*.woff2      (exists) self-hosted subset fonts (5 files, 101.3 KiB), built by scripts/build_fonts.py
 deploy/
@@ -145,10 +144,14 @@ scripts/
   build_fonts.py       (exists) download + subset fonts into web/fonts/ (dev: fonttools, brotli)
   warm.sh / warm.py    (exists) LLM + ASR min_containers=1 for a window, prints cold starts, back to 0
   ui_screens.py        (exists) 360 px screenshots, live page vs prototype -> docs/ui-compare/
+  capture_examples.py  (exists) real requests/responses for the docs -> docs/submission/examples/
+  fill_submission.py   (exists) {{PLACEHOLDERS}} in docs/submission/*.md from docs/validation/ -> build/
+  build_submission.py  (exists) build/*.md -> docs/submission/*.pdf (Chrome, Noto Sans, glyph check)
 archive/
   twillo_echo.py       (archived) Twilio WhatsApp echo prototype, see Future work
 docs/                  submission PDFs (integration evidence, validation, technical docs, team)
   pilot_checklist.md   (exists) secret, reviews, gates, warm-up, real-phone check, tester script
+  submission/          (exists) 02-04 .md + .pdf, 05 video plan, 06 team template, manual.json, examples/
   validation/          export_log.py output: interactions.csv, summary.md
   review/<lang>.csv    (exists) review sheets for yo, ha, ig (all strings except faq_*)
   review/faq_<lang>.csv (exists) short FAQ-answer review sheets
@@ -198,8 +201,10 @@ VP_ENV=dev modal serve app/main.py   # dev; log rows go to /logs/dev/ (never pil
 modal deploy app/main.py         # prod: https://muideen27--voice-postcode-web.modal.run
 PILOT_START=2026-10-11T09:00:00+01:00 modal deploy app/main.py   # start counting on the dashboard
 python scripts/export_log.py --pull --since <pilot start ISO>   # evidence -> docs/validation/
+python scripts/fill_submission.py && python scripts/build_submission.py   # submission PDFs (build needs markdown + playwright)
 modal app logs <app-name> | tail -n 20
 scripts/warm.sh 90               # pilot: LLM + ASR min_containers=1 for 90 min, then 0 (Ctrl+C resets)
+scripts/warm.sh 17:00            # long window: until 17:00 WAT today (max 12 h); see "Judging window plan"
 scripts/warm.sh off              # reset both to 0 now
 modal app stop <app-name>        # stop anything stuck retrying
 
@@ -235,6 +240,25 @@ Quality: Yoruba and Hausa good, Igbo weaker (label it beta). Place names come ou
 - 5 s timeout on every call. Rate limit 600/window (`x-ratelimit-limit`, `x-ratelimit-remaining`
   headers); on `429` wait 2 s and retry once.
 
+## Judging window plan (documented, NOT enabled)
+
+Goal: no judge ever waits for a cold GPU on 15-17 Oct, 09:00-17:00 WAT (08:00-16:00 UTC).
+
+- Manual (works today): run `scripts/warm.sh 17:00` at 08:55 WAT each day from a machine that stays on.
+  It sets `min_containers=1` on the LLM and ASR, prints the cold-start times and resets both to 0 at 17:00.
+- Modal cron (to add only when approved): two scheduled functions in `app/main.py`,
+  `modal.Cron("0 8 15-17 10 *")` (09:00 WAT) calling the same `update_autoscaler(min_containers=1)` as
+  `scripts/warm.py`, and `modal.Cron("0 16 15-17 10 *")` (17:00 WAT) setting 0. The 30-minute canary and
+  the always-on web container keep running as they do now.
+- Cost (Modal list prices checked 11 Oct 2026: L4 $0.000222/s ≈ $0.80/h; CPU $0.0000131/core/s;
+  memory $0.00000222/GiB/s):
+  - **Both GPUs warm**: 2 × 8 h × 3 days = 48 GPU-hours ≈ **$38** plus CPU/memory of those containers.
+    This is **over the $30 October cap** on its own.
+  - **LLM only warm** (recommended within budget): 24 GPU-hours ≈ **$19** plus CPU/memory. ASR then
+    cold-starts in 20-76 s on a judge's first voice note; the page's `/api/warm` on load usually hides it.
+  - Always-on CPU web container: ≈ $0.01/h (0.125 core + small memory), about $0.25/day.
+  Check the real month-to-date spend on the Modal dashboard before enabling anything.
+
 ## Coding conventions
 
 - Python 3.11 in Modal images. Type hints everywhere; `dataclasses` or Pydantic for payloads.
@@ -248,7 +272,7 @@ Quality: Yoruba and Hausa good, Igbo weaker (label it beta). Place names come ou
 - **Template keys are frozen** (8 Oct, for the native-speaker review). Do not add, rename or remove a
   key without asking the user first. Changing English wording also needs the review sheets regenerated.
   Approved exceptions so far: the 8 `faq_*` keys and `warming_up` (8 Oct); 24 page-label keys `ui_*`,
-  `chip`, `conf_*` (9 Oct). The freeze applies again after these.
+  `chip`, `conf_*` (9 Oct); `warming_up_long` (11 Oct). The freeze applies again after these.
 - Store user text only through `app.privacy.for_storage()` (scrubbed: numbers, phones, emails; capped at
   300 chars). Raw text may be used inside the turn (regex, intent) but never stored.
 - Language codes everywhere: `en`, `yo`, `ha`, `ig`.
@@ -330,3 +354,5 @@ account is locked. The Twilio echo prototype is kept in `archive/twillo_echo.py`
   `docs/pilot_checklist.md`. Not-found wording no longer blames the user or the location.
 - 2026-10-11: Page hang fixed (app bound to a deleted secret; redeploy). Startup rule + always-on CPU web
   container. Pilot dashboard tab (`/api/stats`, `PILOT_START`). Footer image slot + `ui_footer_alt` key.
+- 2026-10-11: Footer image slot and `ui_footer_alt` removed (text attribution only). Cold-start UX:
+  `/api/warm` readiness + `warming_up_long`; `warm.sh 17:00`; judging window plan. Submission docs + PDFs.

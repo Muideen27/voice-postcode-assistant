@@ -1,0 +1,188 @@
+[
+  {
+    "step": "Pick language (Yorùbá)",
+    "request": {
+      "method": "POST",
+      "path": "/api/language",
+      "body": {
+        "session": "<session uuid>",
+        "lang": "yo"
+      }
+    },
+    "status": 200,
+    "seconds": 1.4,
+    "response": {
+      "kind": "welcome",
+      "lang": "yo",
+      "text": "Ẹ káàbọ̀! Ẹ lè rí, ṣàyẹ̀wò, kí ẹ sì mọ ìtumọ̀ pósíkòdì tuntun yín nípa sísọ̀rọ̀. A kò béèrè orúkọ yín, nọ́mbà fóònù tàbí NIN. Ẹ̀ẹ̀kan ṣoṣo la ó lo ibi tí ẹ wà láti wá pósíkòdì yín, a kò sì ní tọ́jú rẹ̀. A ó pa ohùn yín rẹ́ lẹ́yìn tí a bá kà á.\n\nN-ATLaS is an initiative of the Federal Ministry of Communications, Innovation and Digital Economy, and powered by Awarri Technologies.",
+      "postcode": null,
+      "segments": null,
+      "confidence": null,
+      "transcript": null,
+      "distance_m": null
+    }
+  },
+  {
+    "step": "Consent",
+    "request": {
+      "method": "POST",
+      "path": "/api/consent",
+      "body": {
+        "session": "<session uuid>",
+        "agree": true
+      }
+    },
+    "status": 200,
+    "seconds": 2.2,
+    "response": {
+      "kind": "ask_knew_before",
+      "lang": "yo",
+      "text": "Kí a tó bẹ̀rẹ̀: ṣé ẹ mọ pósíkòdì tuntun yín ṣáájú òní?",
+      "postcode": null,
+      "segments": null,
+      "confidence": null,
+      "transcript": null,
+      "distance_m": null
+    }
+  },
+  {
+    "step": "Did you know your postcode? No",
+    "request": {
+      "method": "POST",
+      "path": "/api/feedback",
+      "body": {
+        "session": "<session uuid>",
+        "knew_before": false
+      }
+    },
+    "status": 200,
+    "seconds": 2.1,
+    "response": {
+      "kind": "menu",
+      "lang": "yo",
+      "text": "Kí ni ẹ fẹ́ ṣe? Ẹ tẹ gbohùngbohùn kí ẹ sọ̀rọ̀, ẹ fi ibi tí ẹ wà ránṣẹ́ láti gba pósíkòdì yín, tàbí ẹ tẹ pósíkòdì kan láti ṣàyẹ̀wò rẹ̀.",
+      "postcode": null,
+      "segments": null,
+      "confidence": null,
+      "transcript": null,
+      "distance_m": null
+    }
+  },
+  {
+    "step": "Voice note (Yorùbá)",
+    "request": {
+      "method": "POST",
+      "path": "/api/voice",
+      "body": {
+        "session": "<session uuid>",
+        "audio": "<yo_test-02.wav, 595070 bytes, audio/wav>"
+      }
+    },
+    "status": 200,
+    "seconds": 13.8,
+    "response": {
+      "kind": "ask_location",
+      "lang": "yo",
+      "text": "Ohun tí a gbọ́: \"ẹjọ́, mo fẹ́ mọ pósíkòdì ilé mi, mo ń gbé ní ibìẹ̀jùlẹ́kí etí ọ̀sà lagos ni gra ni adojúkọ̀ lawi òtẹ̀\"\nLáti rí pósíkòdì yín, ẹ dúró sí ilé yín kí ẹ tẹ \"Gba pósíkòdì mi\" láti fi ibi tí ẹ wà ránṣẹ́.",
+      "postcode": null,
+      "segments": null,
+      "confidence": null,
+      "transcript": "ẹjọ́, mo fẹ́ mọ pósíkòdì ilé mi, mo ń gbé ní ibìẹ̀jùlẹ́kí etí ọ̀sà lagos ni gra ni adojúkọ̀ lawi òtẹ̀",
+      "distance_m": null
+    }
+  },
+  {
+    "step": "Location (Ikeja test point)",
+    "request": {
+      "method": "POST",
+      "path": "/api/location",
+      "body": {
+        "session": "<session uuid>",
+        "lat": 6.6018,
+        "lng": 3.3515,
+        "accuracy_m": 10
+      }
+    },
+    "status": 200,
+    "seconds": 2.2,
+    "response": {
+      "kind": "postcode",
+      "lang": "yo",
+      "text": "Àkójọ pósíkòdì ìjọba kò tíì ní pósíkòdì fún ibí yìí. Ẹ jọ̀wọ́ tún gbìyànjú nígbà míì.",
+      "postcode": null,
+      "segments": null,
+      "confidence": null,
+      "transcript": null,
+      "distance_m": null
+    }
+  },
+  {
+    "step": "Typed question",
+    "request": {
+      "method": "POST",
+      "path": "/api/text",
+      "body": {
+        "session": "<session uuid>",
+        "text": "kí ni pósíkòdì gan-an?"
+      }
+    },
+    "status": 200,
+    "seconds": 4.3,
+    "response": {
+      "kind": "answer",
+      "lang": "yo",
+      "text": "Pósíkòdì jẹ́ kóòdù tó ní apá márùn-ún: ìpínlẹ̀, ìjọba ìbílẹ̀ (LGA), ẹkùn, àdúgbò àti ẹ̀ka ilé. A ń kọ ọ́ báyìí: AA-99-H77-BB-55, fún àpẹẹrẹ LA-11-A12-GN-01. Pósíkòdì tuntun Nàìjíríà ti bẹ̀rẹ̀ láti 1 Oṣù Kẹwàá 2026.\nṢé èyí ràn yín lọ́wọ́?",
+      "postcode": null,
+      "segments": null,
+      "confidence": null,
+      "transcript": null,
+      "distance_m": null
+    }
+  },
+  {
+    "step": "Code check",
+    "request": {
+      "method": "POST",
+      "path": "/api/text",
+      "body": {
+        "session": "<session uuid>",
+        "text": "ṣé LA-11-A12-GN-01 tọ̀nà?"
+      }
+    },
+    "status": 200,
+    "seconds": 2.0,
+    "response": {
+      "kind": "validation",
+      "lang": "yo",
+      "text": "LA 11 A12 GN 01 kò tíì sí nínú àkójọ pósíkòdì ìjọba. Ẹ ṣàyẹ̀wò lẹ́tà àti nọ́mbà kọ̀ọ̀kan, tàbí kí ẹ tún gbìyànjú nígbà míì.\nṢé èyí ràn yín lọ́wọ́?",
+      "postcode": null,
+      "segments": null,
+      "confidence": null,
+      "transcript": null,
+      "distance_m": null
+    }
+  },
+  {
+    "step": "Feedback",
+    "request": {
+      "method": "POST",
+      "path": "/api/feedback",
+      "body": {
+        "session": "<session uuid>",
+        "helpful": true
+      }
+    },
+    "status": 200,
+    "seconds": 2.0,
+    "response": {
+      "kind": "thanks",
+      "lang": "yo",
+      "text": "Ẹ ṣé fún èsì yín!",
+      "postcode": null,
+      "segments": null,
+      "confidence": null,
+      "transcript": null,
+      "distance_m": null
+    }
+  }
+]

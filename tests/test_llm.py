@@ -268,3 +268,13 @@ def test_warm_sends_a_one_token_request_and_swallows_errors() -> None:
 )
 def test_guard_capitalised_words(answer: str, question: str, reason: str | None) -> None:
     assert guard(answer, FACTS["en"], "en", question) == reason
+
+
+def test_ready_reflects_v1_models() -> None:
+    assert run(client(lambda r: httpx.Response(200, json={"data": []})).ready()) is True
+    assert run(client(lambda r: httpx.Response(503)).ready()) is False
+
+    def cold(request: httpx.Request) -> httpx.Response:
+        raise httpx.ReadTimeout("starting", request=request)
+
+    assert run(client(cold).ready()) is False

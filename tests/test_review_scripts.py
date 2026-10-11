@@ -44,7 +44,7 @@ def test_three_sheets_split_the_review_keys(lang: str, templates: Path, tmp_path
         keys[group] = [r["key"] for r in rows]
     assert sorted(sum(keys.values(), [])) == sorted(todo)  # every review key in exactly one sheet
     assert all(k.startswith("faq_") for k in keys["faq"]) and len(keys["faq"]) == 8
-    assert all(k.startswith(("ui_", "conf_")) or k == "chip" for k in keys["ui"]) and len(keys["ui"]) == 25
+    assert all(k.startswith(("ui_", "conf_")) or k == "chip" for k in keys["ui"]) and len(keys["ui"]) == 24
     assert not any(group_of(k) != "main" for k in keys["main"])
 
 

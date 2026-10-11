@@ -92,6 +92,14 @@ async def pilot_stats() -> dict[str, Any]:
     return value
 
 
+async def readiness(llm: Any, asr_ready: Any) -> dict[str, bool]:
+    """Both checks in parallel, each capped at 2.5 s."""
+    import asyncio
+
+    llm_ok, asr_ok = await asyncio.gather(llm.ready(), asr_ready())
+    return {"llm": llm_ok, "asr": asr_ok}
+
+
 def session_store():
     from app.store import ModalDictSessionStore, TtlSessionStore
 
@@ -116,7 +124,7 @@ def web():
     from app.canary import run_canary
     from app.channels.web import create_api
     from app.orchestrator import Orchestrator, load_templates
-    from app.services.asr import ModalAsr, warm_asr
+    from app.services.asr import ModalAsr, asr_ready, warm_asr
     from app.services.llm import NatlasClient, NatlasExplain, NatlasIntent
     from app.services.postcode import PostcodeClient, load_states
     from app.store import JsonlLog, ModalDictCanaryStore, ModalDictDeclineCounter
@@ -149,6 +157,7 @@ def web():
         warmers=[llm.warm, warm_asr],
         on_start=[lambda: run_canary(postcode, canary_store)],
         stats=pilot_stats,
+        readiness=lambda: readiness(llm, asr_ready),
     )
 
 
