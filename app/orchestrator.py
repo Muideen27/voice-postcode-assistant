@@ -28,6 +28,7 @@ from app.services.interfaces import (
 from app.services.postcode import POSTCODE_RE, PostcodeError, display, find_postcode, normalise, segments
 from app.services.prompts import FAQ_IDS, LOW_CONFIDENCE
 from app.store import (
+    CanaryReader,
     DeclineCounter,
     Feedback,
     InputKind,
@@ -179,6 +180,7 @@ class Orchestrator:
         states: dict[str, str],
         templates: dict[Lang, dict[str, str]] | None = None,
         explain_mode: ExplainMode = "faq",
+        canary: CanaryReader | None = None,
     ) -> None:
         self.postcode = postcode
         self.intent = intent
@@ -190,6 +192,7 @@ class Orchestrator:
         self.states = states
         self.templates = templates or load_templates()
         self.explain_mode = explain_mode
+        self.canary = canary
 
     # ---------------------------------------------------------------- entry point
 
@@ -402,6 +405,19 @@ class Orchestrator:
             return Reply(kind="validation", lang=lang, text=self._t(lang, "validation_bad_format"))
         s.awaiting_feedback = True
         if not result.valid:
+            if result.status == "not_found" and await self._database_down():
+                # The official database is not answering for known codes today (canary not "valid"), so a
+                # well-formed code is "unconfirmed", not "not found": explain its parts instead.
+                turn.api_status = "unconfirmed_db_down"
+                turn.postcode_found = None
+                segs = self._segments(lang, result.postcode)
+                head = self._t(lang, "format_ok_unconfirmed", display=display(result.postcode))
+                return Reply(
+                    kind="validation",
+                    lang=lang,
+                    text=self._with_feedback(lang, [head, *_seg_lines(segs)]),
+                    segments=segs,
+                )
             text = self._t(lang, "validation_not_found", display=display(result.postcode))
             return Reply(kind="validation", lang=lang, text=self._with_feedback(lang, [text]))
         segs = self._segments(lang, result.postcode)
@@ -413,6 +429,16 @@ class Orchestrator:
             postcode=result.postcode,
             segments=segs,
         )
+
+    async def _database_down(self) -> bool:
+        """True unless today's canary says "valid". No reader configured -> trust the API (False)."""
+        if self.canary is None:
+            return False
+        try:
+            return await self.canary.today() != "valid"
+        except Exception as exc:
+            log_event("canary_read_error", error=type(exc).__name__)
+            return True
 
     async def _explain(self, question: str, s: Session, turn: _Turn, lang: Lang) -> Reply:
         start = time.perf_counter()

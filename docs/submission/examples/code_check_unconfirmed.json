@@ -1,0 +1,43 @@
+{
+  "captured": "2026-10-11, deployed service, after the canary-aware code check",
+  "request": {
+    "method": "POST",
+    "path": "/api/text",
+    "body": {
+      "session": "<session uuid>",
+      "text": "Is LA-11-A12-GN-01 correct?"
+    }
+  },
+  "seconds": 2.1,
+  "response": {
+    "kind": "validation",
+    "lang": "en",
+    "text": "LA 11 A12 GN 01 has the right format, but the official postcode database can't confirm it today. Here is what each part means:\nLA = Lagos\n11 = your Local Government Area\nA12 = your district\nGN = your area\n01 = your building\nDid this help?",
+    "postcode": null,
+    "segments": [
+      [
+        "LA",
+        "Lagos"
+      ],
+      [
+        "11",
+        "your Local Government Area"
+      ],
+      [
+        "A12",
+        "your district"
+      ],
+      [
+        "GN",
+        "your area"
+      ],
+      [
+        "01",
+        "your building"
+      ]
+    ],
+    "confidence": null,
+    "transcript": null,
+    "distance_m": null
+  }
+}

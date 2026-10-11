@@ -17,3 +17,5 @@ pytest==9.1.1
 ruff==0.16.10
 fonttools==4.66.1   # scripts/build_fonts.py
 brotli==1.2.0       # woff2 output for fonttools
+markdown==3.11       # scripts/build_submission.py
+playwright==1.63.0   # scripts/build_submission.py, ui_screens.py (uses the installed Google Chrome)

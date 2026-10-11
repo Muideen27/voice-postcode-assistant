@@ -247,3 +247,19 @@ def test_sweep_removes_only_stale_unconsented_sessions() -> None:
     run(store.put("c" * 64, Session(stage="consent")))  # fresh
     assert run(store.sweep(list(inner.data.items()))) == 1
     assert set(inner.data) == {"b" * 64, "c" * 64}
+
+
+def test_modal_dict_canary_reader_reads_today_and_caches() -> None:
+    from app.store import ModalDictCanaryReader
+
+    fake, clock = FakeModalDict(), Clock()
+    fake.data[today_wat()] = {"not_found": 3, "last": "not_found"}
+    reader = ModalDictCanaryReader(fake, cache_s=60, clock=clock)
+    assert run(reader.today()) == "not_found"
+    fake.data[today_wat()] = {"valid": 1, "last": "valid"}
+    assert run(reader.today()) == "not_found"  # cached
+    clock.now += 61
+    assert run(reader.today()) == "valid"
+    fake.data.clear()
+    clock.now += 61
+    assert run(reader.today()) is None

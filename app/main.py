@@ -127,7 +127,7 @@ def web():
     from app.services.asr import ModalAsr, asr_ready, warm_asr
     from app.services.llm import NatlasClient, NatlasExplain, NatlasIntent
     from app.services.postcode import PostcodeClient, load_states
-    from app.store import JsonlLog, ModalDictCanaryStore, ModalDictDeclineCounter
+    from app.store import JsonlLog, ModalDictCanaryReader, ModalDictCanaryStore, ModalDictDeclineCounter
 
     templates = load_templates()
     llm = NatlasClient.from_env()
@@ -148,6 +148,7 @@ def web():
         states=load_states(),
         templates=templates,
         explain_mode="generate" if os.environ.get("EXPLAIN_MODE") == "generate" else "faq",
+        canary=ModalDictCanaryReader(canary_dict),
     )
     return create_api(
         orchestrator.handle,

@@ -316,3 +316,37 @@ class ModalDictCanaryStore:
     async def record(self, status: CanaryStatus) -> None:
         day = today_wat()
         await self._dict.put.aio(day, _add_canary(await self._dict.get.aio(day), status))
+
+
+class CanaryReader(Protocol):
+    """Today's last canary result ("valid", "not_found", "auth", "error") or None if unknown."""
+
+    async def today(self) -> CanaryStatus | None: ...
+
+
+class MemoryCanaryReader:
+    def __init__(self, status: CanaryStatus | None = None) -> None:
+        self.status = status
+
+    async def today(self) -> CanaryStatus | None:
+        return self.status
+
+
+class ModalDictCanaryReader:
+    """Reads today's entry of the canary Dict, cached for `cache_s` so code checks stay fast."""
+
+    def __init__(
+        self, modal_dict: Any, cache_s: float = 60.0, clock: Callable[[], float] = time.time
+    ) -> None:
+        self._dict = modal_dict
+        self._cache_s = cache_s
+        self._clock = clock
+        self._at = -cache_s
+        self._value: CanaryStatus | None = None
+
+    async def today(self) -> CanaryStatus | None:
+        if self._clock() - self._at >= self._cache_s:
+            day = await self._dict.get.aio(today_wat()) or {}
+            self._value = day.get("last")
+            self._at = self._clock()
+        return self._value

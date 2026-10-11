@@ -325,6 +325,14 @@ is auth, not not-found); `402` → credits error; `level_not_granted` → its ow
 call level 1, so it signals a config bug); `429` → wait and retry once after 2 s; timeout (5 s) →
 "service is slow, try again"; `404` on lookup → not found.
 
+**Canary-aware code check.** When `lookup` returns `not_found` and today's canary is not `valid` (or is
+unknown), the reply is `format_ok_unconfirmed` ("{display} has the right format, but the official postcode
+database can't confirm it today. Here is what each part means:") plus the segment explanation (state name
+from `states.json`, labels from the templates); `postcode` stays null (never presented as confirmed); the
+log row has `api_status = "unconfirmed_db_down"`, `postcode_found = null`. When the canary is `valid`, the
+true `validation_not_found` reply stays. Applies to typed and spoken codes. The orchestrator reads today's
+canary through `ModalDictCanaryReader` (60 s cache).
+
 **Data canary** (`app/canary.py`): at every web container start (background task) and every 30 minutes
 (`postcode_canary` scheduled function), look up LA-11-A12-GN-01 at level 1 and log one JSON line
 `{"canary": "valid|not_found|auth|error", "ts": ...}`. Daily counts and the last result go to the
@@ -467,6 +475,8 @@ The Twilio echo prototype is kept in `archive/twillo_echo.py`.
   budget HTML+CSS+JS < 50 KB, fonts < 120 KB. Fact sheets out of the review flow.
 - 2026-10-09: ASR revisions pinned; ASR cold/warm timings. New routes `/api/strings/<lang>` and
   `/api/location-denied`. Dev runs (`VP_ENV=dev`) log to `/logs/dev/`.
+- 2026-10-11: Canary-aware code check (`format_ok_unconfirmed`, `unconfirmed_db_down`). Judging window:
+  LLM-only crons in `deploy/judging_window.py`, not deployed.
 - 2026-10-11: Footer image slot and `ui_footer_alt` removed (text attribution only). `/api/warm` returns
   readiness; page holds cold turns with `warming_up_long`. Submission docs and PDF build scripts.
 - 2026-10-11: `/api/stats` + dashboard tab (`PILOT_START`), `/assets/` footer slot (`ui_footer_alt`),

@@ -76,7 +76,8 @@
     "conf_high",
     "conf_medium",
     "conf_low",
-    "warming_up_long"
+    "warming_up_long",
+    "format_ok_unconfirmed"
   ],
   "language_name": "Igbo",
   "attribution": "N-ATLaS is an initiative of the Federal Ministry of Communications, Innovation and Digital Economy, and powered by Awarri Technologies.",
@@ -155,5 +156,6 @@
   "conf_high": "Ntụkwasị obi dị elu",
   "conf_medium": "Ntụkwasị obi nkịtị",
   "conf_low": "Ntụkwasị obi dị ala",
-  "warming_up_long": "Anyị na-akpọte usoro asụsụ, ihe dị ka nkeji abụọ, naanị na nke mbụ."
+  "warming_up_long": "Anyị na-akpọte usoro asụsụ, ihe dị ka nkeji abụọ, naanị na nke mbụ.",
+  "format_ok_unconfirmed": "{display} nwere usoro ziri ezi, mana ebe nchekwa postcode gọọmentị enweghị ike ịkwado ya taa. Lee ihe akụkụ ọ bụla pụtara:"
 }

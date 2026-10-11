@@ -101,8 +101,14 @@ every 30 minutes, and records the result per day:
      returned `not_found`, and the API's own autocomplete for "LA11" returned no suggestions.
    - From 10 Oct 2026 the canary above records the daily result (`not_found` = valid key, no data).
      NIPOST has been informed.
-   During these days the app gives an honest answer ("The official postcode database has no postcode for
-   this spot yet") and never invents a postcode. Turns on those days show `postcode_found = false`.
+   During these days the app never invents a postcode. A location lookup answers honestly: "The official
+   postcode database has no postcode for this spot yet". For a **code check** (typed or spoken) the app
+   uses the canary: when the lookup says `not_found` and today's canary is not `valid`, it does not tell the
+   user the code is wrong. It replies "{code} has the right format, but the official postcode database
+   can't confirm it today. Here is what each part means:" followed by the meaning of each part (state,
+   Local Government Area, district, area, unit), and logs `api_status = unconfirmed_db_down` with
+   `postcode_found` left empty. When the canary is `valid`, a `not_found` code is reported as not found.
+   In the numbers above, unconfirmed code checks are therefore neither "valid" nor "not found".
 2. **Igbo speech recognition is labelled beta** in the app; Igbo users are offered "Type instead".
 3. **Languages not yet reviewed by native speakers:** {{UNREVIEWED_LANGUAGES}}.
 4. **Speech recognition accuracy was measured offline only** (recorded test clips), not live: the pilot

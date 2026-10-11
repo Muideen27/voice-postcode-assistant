@@ -779,3 +779,67 @@ def test_street_rule_end_to_end() -> None:
 def test_location_reply_carries_distance_for_the_chip() -> None:
     h = ready("en")
     assert h.send("location", lat=6.6018, lng=3.3515).distance_m == 9.2
+
+
+# ---------------------------------------------------------------- canary-aware code check
+
+
+class BrokenCanary:
+    async def today(self) -> str:
+        raise ConnectionError("dict down")
+
+
+def canary_ready(lang: Lang, status: str | None, **services: Any) -> Harness:
+    from app.store import MemoryCanaryReader
+
+    h = Harness(**services)
+    h.orch.canary = MemoryCanaryReader(status)  # type: ignore[arg-type]
+    h.onboard(lang)
+    return h
+
+
+@pytest.mark.parametrize("status", ["not_found", "auth", "error", None])
+@pytest.mark.parametrize("lang", ["en", "yo"])
+def test_not_found_while_database_down_is_unconfirmed(status: str | None, lang: Lang) -> None:
+    h = canary_ready(lang, status)
+    reply = h.send("text", f"is {INVALID} correct")
+    head = T[lang]["format_ok_unconfirmed"].format(display="LA 11 W06 TC 10")
+    assert reply.kind == "validation" and reply.text.startswith(head)
+    assert T[lang]["validation_not_found"].format(display="LA 11 W06 TC 10") not in reply.text
+    assert reply.postcode is None  # never presented as a confirmed postcode
+    assert [c for c, _ in reply.segments] == ["LA", "11", "W06", "TC", "10"]
+    assert reply.segments[0] == ("LA", "Lagos")
+    assert "LA = Lagos" in reply.text and reply.text.endswith(T[lang]["feedback_question"])
+    assert (h.last_row["api_status"], h.last_row["postcode_found"]) == ("unconfirmed_db_down", None)
+
+
+def test_not_found_with_healthy_database_stays_not_found() -> None:
+    h = canary_ready("en", "valid")
+    reply = h.send("text", f"is {INVALID} correct")
+    assert reply.text.startswith(T["en"]["validation_not_found"].format(display="LA 11 W06 TC 10"))
+    assert (h.last_row["api_status"], h.last_row["postcode_found"]) == ("not_found", False)
+
+
+def test_canary_read_failure_counts_as_database_down() -> None:
+    h = Harness()
+    h.orch.canary = BrokenCanary()  # type: ignore[assignment]
+    h.onboard("en")
+    assert h.send("text", INVALID).text.startswith(
+        T["en"]["format_ok_unconfirmed"].format(display="LA 11 W06 TC 10")
+    )
+
+
+def test_spoken_code_while_database_down_is_unconfirmed() -> None:
+    h = canary_ready("ha", "not_found", asr=FakeAsr("shin la 11 w06 tc 10 daidai ne"))
+    reply = h.send("voice", audio=b"x")
+    assert T["ha"]["format_ok_unconfirmed"].format(display="LA 11 W06 TC 10") in reply.text
+    assert h.intent.calls == []  # a spoken code never needs the language model
+    assert h.last_row["api_status"] == "unconfirmed_db_down"
+
+
+def test_valid_code_is_unaffected_by_the_canary() -> None:
+    h = canary_ready("en", "not_found")
+    reply = h.send("text", VALID)
+    assert reply.postcode == VALID and reply.text.startswith(
+        T["en"]["validation_valid"].format(display="LA 11 A12 GN 01")
+    )

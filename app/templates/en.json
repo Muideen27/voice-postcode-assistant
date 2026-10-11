@@ -77,5 +77,6 @@
   "conf_high": "High confidence",
   "conf_medium": "Medium confidence",
   "conf_low": "Low confidence",
-  "warming_up_long": "Waking up the language model, about 2 minutes, the first time only."
+  "warming_up_long": "Waking up the language model, about 2 minutes, the first time only.",
+  "format_ok_unconfirmed": "{display} has the right format, but the official postcode database can't confirm it today. Here is what each part means:"
 }

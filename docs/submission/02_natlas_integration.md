@@ -131,17 +131,22 @@ Annotation: `NCAIR1/Yoruba-ASR` produced the transcript with tone marks; N-ATLaS
 `get_my_postcode`; the reply asks for the location, because a place name alone cannot give a building
 postcode. Total 13.8 s for an 18.6 s recording (ASR and LLM warm).
 
-**(c) A code check never calls the language model** (step 7):
+**(c) A code check never calls the language model** (`code_check_unconfirmed.json`, captured after the
+canary-aware reply was deployed):
 
 ```json
-{"request": {"method": "POST", "path": "/api/text", "body": {"session": "<session uuid>", "text": "ṣé LA-11-A12-GN-01 tọ̀nà?"}},
- "response": {"kind": "validation", "lang": "yo",
-   "text": "LA 11 A12 GN 01 kò tíì sí nínú àkójọ pósíkòdì ìjọba. Ẹ ṣàyẹ̀wò lẹ́tà àti nọ́mbà kọ̀ọ̀kan, tàbí kí ẹ tún gbìyànjú nígbà míì.\nṢé èyí ràn yín lọ́wọ́?"}}
+{"request": {"method": "POST", "path": "/api/text", "body": {"session": "<session uuid>", "text": "Is LA-11-A12-GN-01 correct?"}},
+ "response": {"kind": "validation", "lang": "en", "postcode": null,
+   "text": "LA 11 A12 GN 01 has the right format, but the official postcode database can't confirm it today. Here is what each part means:\nLA = Lagos\n11 = your Local Government Area\nA12 = your district\nGN = your area\n01 = your building\nDid this help?",
+   "segments": [["LA", "Lagos"], ["11", "your Local Government Area"], ["A12", "your district"], ["GN", "your area"], ["01", "your building"]]}}
 ```
 
-Annotation: the postcode is found by the pattern match and checked with the Postcode API (2.0 s). On 11 Oct
-the official database returned `not_found` for every code (see the validation report, limitations), and
-the reply says so without blaming the user.
+Annotation: the postcode is found by the pattern match and checked with the Postcode API (2.1 s, no LLM).
+The API answered `not_found`, but the service's data check (every 30 minutes) shows the official database is not
+answering for known codes today (validation report, limitations), so the reply does not call the code
+wrong: it says the format is right, that the database can't confirm it today, and explains each part from
+the state table and reviewed labels. `postcode` stays empty because nothing confirmed it. When the
+database is healthy, a missing code is reported as not found.
 
 All eight captured steps (language, consent, the "did you know" question, voice, location, typed
 question, code check, feedback) returned HTTP 200 in 1.4–13.8 s.

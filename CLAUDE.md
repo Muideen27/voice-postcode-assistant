@@ -72,6 +72,7 @@ One core, thin channel. All logic lives in the orchestrator; the channel only tr
    - `get_my_postcode` -> ask for location (place names alone cannot give a building code at L1);
      if it names a street, road or "name" -> `faq_place_name_no` instead
    - `validate_postcode` -> regex-extract and normalise code -> `lookup(level=1)` -> valid / not found;
+     not found while today's canary is not "valid" -> `format_ok_unconfirmed` + segment explanation;
      no code in the text -> `ask_code` (offers both: send the code, or share location)
    - `explain_postcode` -> FAQ routing: the intent call also returns `faq_id`; the reply is the reviewed
      template `faq_<faq_id>` (`none` -> explain fallback + menu). No generated text in production
@@ -116,6 +117,7 @@ web/design/prototype.html (exists) design source of truth (phone screen of the P
 web/fonts/*.woff2      (exists) self-hosted subset fonts (5 files, 101.3 KiB), built by scripts/build_fonts.py
 deploy/
   natlas_serve.py      (exists) vLLM on L4, OpenAI-compatible, API-key protected
+  judging_window.py    (exists, NOT deployed) crons: LLM warm 09:00-17:00 WAT on 15-17 Oct
 tests/                 unit tests only: no network, run by `pytest -q`
   test_postcode.py     (exists) API client tests with recorded responses
   fixtures/postcode/   (exists) API response bodies; see its README for which are live
@@ -240,24 +242,25 @@ Quality: Yoruba and Hausa good, Igbo weaker (label it beta). Place names come ou
 - 5 s timeout on every call. Rate limit 600/window (`x-ratelimit-limit`, `x-ratelimit-remaining`
   headers); on `429` wait 2 s and retry once.
 
-## Judging window plan (documented, NOT enabled)
+## Judging window plan (approved: LLM only; prepared, NOT enabled)
 
-Goal: no judge ever waits for a cold GPU on 15-17 Oct, 09:00-17:00 WAT (08:00-16:00 UTC).
+Approved 11 Oct: keep **only the N-ATLaS LLM** warm 09:00-17:00 WAT on 15-17 Oct (ASR stays at 0 and
+cold-starts in 20-76 s on a judge's first voice note; the page's `/api/warm` on load usually hides it).
+The crons live in their own app, `deploy/judging_window.py`, so nothing runs until it is deployed. The
+user enables it on Wednesday 14 Oct after checking the Modal spend.
 
-- Manual (works today): run `scripts/warm.sh 17:00` at 08:55 WAT each day from a machine that stays on.
-  It sets `min_containers=1` on the LLM and ASR, prints the cold-start times and resets both to 0 at 17:00.
-- Modal cron (to add only when approved): two scheduled functions in `app/main.py`,
-  `modal.Cron("0 8 15-17 10 *")` (09:00 WAT) calling the same `update_autoscaler(min_containers=1)` as
-  `scripts/warm.py`, and `modal.Cron("0 16 15-17 10 *")` (17:00 WAT) setting 0. The 30-minute canary and
-  the always-on web container keep running as they do now.
+```bash
+modal deploy deploy/judging_window.py   # ENABLE: 09:00 WAT min_containers=1, 17:00 WAT -> 0, on 15/16/17 Oct
+modal app list | grep judging-window    # check it is deployed
+modal app logs judging-window           # each cron logs {"event": "judging_window", ...}
+modal app stop judging-window           # DISABLE: no more crons
+scripts/warm.sh off                     # if disabled mid-window: set LLM (and ASR) back to 0 now
+```
+
+- Manual alternative (no cron): `scripts/warm.sh 17:00` at 08:55 WAT (warms LLM **and** ASR, so ~2x cost).
 - Cost (Modal list prices checked 11 Oct 2026: L4 $0.000222/s ≈ $0.80/h; CPU $0.0000131/core/s;
-  memory $0.00000222/GiB/s):
-  - **Both GPUs warm**: 2 × 8 h × 3 days = 48 GPU-hours ≈ **$38** plus CPU/memory of those containers.
-    This is **over the $30 October cap** on its own.
-  - **LLM only warm** (recommended within budget): 24 GPU-hours ≈ **$19** plus CPU/memory. ASR then
-    cold-starts in 20-76 s on a judge's first voice note; the page's `/api/warm` on load usually hides it.
-  - Always-on CPU web container: ≈ $0.01/h (0.125 core + small memory), about $0.25/day.
-  Check the real month-to-date spend on the Modal dashboard before enabling anything.
+  memory $0.00000222/GiB/s): LLM only, 24 GPU-hours ≈ **$19** plus CPU/memory. Both GPUs would be ≈ $38,
+  over the $30 October cap. The always-on CPU web container is about $0.25/day.
 
 ## Coding conventions
 
@@ -272,7 +275,7 @@ Goal: no judge ever waits for a cold GPU on 15-17 Oct, 09:00-17:00 WAT (08:00-16
 - **Template keys are frozen** (8 Oct, for the native-speaker review). Do not add, rename or remove a
   key without asking the user first. Changing English wording also needs the review sheets regenerated.
   Approved exceptions so far: the 8 `faq_*` keys and `warming_up` (8 Oct); 24 page-label keys `ui_*`,
-  `chip`, `conf_*` (9 Oct); `warming_up_long` (11 Oct). The freeze applies again after these.
+  `chip`, `conf_*` (9 Oct); `warming_up_long`, `format_ok_unconfirmed` (11 Oct). The freeze applies again.
 - Store user text only through `app.privacy.for_storage()` (scrubbed: numbers, phones, emails; capped at
   300 chars). Raw text may be used inside the turn (regex, intent) but never stored.
 - Language codes everywhere: `en`, `yo`, `ha`, `ig`.
@@ -356,3 +359,5 @@ account is locked. The Twilio echo prototype is kept in `archive/twillo_echo.py`
   container. Pilot dashboard tab (`/api/stats`, `PILOT_START`). Footer image slot + `ui_footer_alt` key.
 - 2026-10-11: Footer image slot and `ui_footer_alt` removed (text attribution only). Cold-start UX:
   `/api/warm` readiness + `warming_up_long`; `warm.sh 17:00`; judging window plan. Submission docs + PDFs.
+- 2026-10-11: Canary-aware code check (`format_ok_unconfirmed`, `api_status=unconfirmed_db_down`).
+  Judging-window crons prepared in `deploy/judging_window.py` (LLM only, not deployed).
