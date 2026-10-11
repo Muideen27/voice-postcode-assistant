@@ -32,7 +32,37 @@
 *{box-sizing:border-box}
 body{background:var(--ground);color:var(--ink);font-family:var(--font-body);font-size:16px;line-height:1.55;padding:0 16px;margin:0}
 button:focus-visible{outline:3px solid var(--code);outline-offset:2px}
-.app{max-width:370px;margin:0 auto;padding-block:16px}
+/* Prototype layout, tabs and dashboard styles (copied verbatim from web/design/prototype.html). */
+.wrap{max-width:1080px;margin:0 auto;padding-block:28px 48px;display:flex;flex-direction:column;gap:22px}
+header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px}
+nav{display:flex;gap:4px;background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:4px;flex-wrap:wrap}
+nav button{font:inherit;font-size:.92rem;border:0;background:transparent;color:var(--ink);padding:8px 16px;border-radius:999px;cursor:pointer}
+nav button[aria-selected="true"]{background:var(--accent);color:var(--accent-ink);font-weight:700}
+.view{display:none}.view.on{display:block}
+.banner{background:var(--warn-soft);color:var(--warn);border-radius:12px;padding:10px 14px;font-size:.9rem;font-weight:700}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+.kpi p{margin:0;font-size:.82rem;color:var(--muted)}
+.kpi strong{display:block;font-family:var(--font-display);font-size:1.9rem;line-height:1.1;margin-top:4px;font-variant-numeric:tabular-nums}
+.kpi .meter{height:6px;background:var(--ground);border-radius:6px;margin-top:10px;overflow:hidden}
+.kpi .meter span{display:block;height:100%;background:var(--accent)}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px 18px;min-width:0;display:flex;flex-direction:column;gap:12px}
+.card h2{font-family:var(--font-display);font-size:1.15rem;margin:0}
+.bars{display:flex;flex-direction:column;gap:9px}
+.bars .b{display:grid;grid-template-columns:96px minmax(0,1fr) 46px;align-items:center;gap:10px;font-size:.88rem}
+.bars .track{height:14px;background:var(--ground);border-radius:4px;overflow:hidden}
+.bars .fill{height:100%;background:var(--accent);border-radius:4px}
+.bars .fill.low{background:var(--warn)}
+.bars .n{text-align:right;font-variant-numeric:tabular-nums;font-family:var(--font-mono);font-size:.8rem}
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.86rem;font-variant-numeric:tabular-nums}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+th{font-size:.75rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:700}
+.note{font-size:.82rem;color:var(--muted);margin:0}
+/* App-only rules: .app replaces the decorative phone frame; .foot img is the optional footer image slot. */
+.app{max-width:370px;margin:0 auto;width:100%}
+.foot img{display:block;margin:8px auto 0;max-width:100%;height:auto}
 .screen{background:var(--panel);border-radius:28px;min-height:610px;padding:22px 18px 16px;display:flex;flex-direction:column;gap:14px;position:relative;overflow:hidden}
 .bar{display:flex;justify-content:space-between;align-items:center;font-size:.8rem;color:var(--muted)}
 .bar b{font-family:var(--font-display);color:var(--ink);font-size:1rem}
@@ -67,7 +97,37 @@ button:focus-visible{outline:3px solid var(--code);outline-offset:2px}
 .center{text-align:center}
 .toast{font-size:.85rem;color:var(--accent);min-height:1.2em;text-align:center}
 </style>
-<main class="app"><div class="screen" id="screen" aria-live="polite"></div></main>
+<div class="wrap">
+  <header>
+    <nav role="tablist" aria-label="Views">
+      <button role="tab" id="tab-app" aria-selected="true" data-view="app"></button>
+      <button role="tab" id="tab-dashboard" aria-selected="false" data-view="dashboard">Pilot dashboard</button>
+    </nav>
+  </header>
+  <section class="view on" id="view-app" aria-labelledby="tab-app">
+    <main class="app"><div class="screen" id="screen" aria-live="polite"></div></main>
+  </section>
+  <!-- Pilot dashboard: English only. Real log rows from PILOT_START only; never transcripts or user IDs. -->
+  <section class="view" id="view-dashboard" aria-labelledby="tab-dashboard" lang="en">
+    <div class="stack" style="gap:14px">
+      <div class="banner" id="d-status">Loading…</div>
+      <div class="kpis" id="d-kpis"></div>
+      <div class="grid2">
+        <div class="card"><h2>Interactions by language</h2><div class="bars" id="bars-lang"></div></div>
+        <div class="card"><h2>Said it helped, by language</h2><div class="bars" id="bars-helped"></div>
+          <p class="note">Share of Yes among the feedback answers in each language.</p></div>
+        <div class="card"><h2>What people asked for</h2><div class="bars" id="bars-intent"></div></div>
+        <div class="card"><h2>Median response time</h2><div class="bars" id="bars-time"></div>
+          <p class="note">Location answers skip the language model, so they stay fast even on a cold start.</p></div>
+      </div>
+      <div class="card"><h2>Recent sessions</h2>
+        <div class="tbl"><table>
+          <thead><tr><th>Time (WAT)</th><th>Language</th><th>Input</th><th>Intent</th><th>Postcode</th><th>Response</th><th>Feedback</th></tr></thead>
+          <tbody id="sessions"></tbody></table></div>
+        <p class="note">No transcripts, names, phone numbers or locations are shown. Users are stored only as one-way hashes.</p></div>
+    </div>
+  </section>
+</div>
 <script>
 "use strict";
 const ORDER = ["en", "yo", "ha", "ig"];           /* prototype order on the language screen */
@@ -110,12 +170,16 @@ function wire(){ const b = document.getElementById("b-lang"); if(b) b.onclick = 
 function paint(html){ $s.innerHTML = bar() + html; wire(); }
 function waiting(msg){ paint(`<div class="pulse"><span></span></div><p class="s-title center">${esc(msg)}</p><p class="s-text center" id="wake"></p>`); }
 
+function foot(text){
+  return `<p class="foot">${esc(text)}<img src="/assets/footer.webp" width="300" height="196" alt="${esc(ui.ui_footer_alt)}" loading="lazy" onerror="this.remove()"></p>`;
+}
+
 /* 1. language (prototype screen; title and intro in the browser's language until one is picked) */
 function showLang(){
   const t = ui; document.documentElement.lang = lang || pageLang;
   paint(`<p class="s-title">${esc(t.ui_choose)}</p><p class="s-text">${esc(t.ui_intro)}</p>
     <div class="stack">${ORDER.map(k => `<button class="big" data-l="${k}" lang="${k}">${esc(S[k].language_name)}${k === "ig" ? ` <span class="chip warn">${esc(t.ui_beta)}</span>` : ""}</button>`).join("")}</div>
-    <p class="foot">${esc(t.attribution)}</p>`);
+    ${foot(t.attribution)}`);
   $s.querySelectorAll("[data-l]").forEach(b => b.onclick = async () => {
     lang = b.dataset.l; ui = S[lang]; document.documentElement.lang = lang;
     waiting(ui.ui_working);
@@ -129,7 +193,7 @@ function consent(reply){
   paint(`<p class="s-text">${esc(welcome)}</p>
     <div class="stack"><button class="big primary" style="min-height:56px" id="b-yes">${esc(ui.consent_button)}</button>
     <button class="big" id="b-no">${esc(ui.decline_button)}</button></div>
-    <p class="foot">${esc(rest.join(" "))}</p>`);
+    ${foot(rest.join(" "))}`);
   document.getElementById("b-yes").onclick = async () => { waiting(ui.ui_working); render(await call("/api/consent", {agree:true})); };
   document.getElementById("b-no").onclick = async () => { waiting(ui.ui_working); render(await call("/api/consent", {agree:false})); };
 }
@@ -151,7 +215,7 @@ function home(note){
       <button class="big primary" id="b-get">${pin}<span>${esc(ui.btn_location)}</span><small>${esc(ui.ui_get_sub)}</small></button>
       <button class="big voice" id="b-ask">${mic}<span>${esc(ui.btn_speak)}</span><small>${esc(ui.ui_ask_sub)}</small></button>
       <button class="big" id="b-type">${kb}<span>${esc(ui.btn_type)}<br><small style="opacity:.75">${esc(ui.ui_type_sub)}</small></span></button>
-    </div><p class="foot">${esc(ui.attribution)}</p>`);
+    </div>${foot(ui.attribution)}`);
   document.getElementById("b-get").onclick = locate;
   document.getElementById("b-ask").onclick = record;
   document.getElementById("b-type").onclick = typeScreen;
@@ -281,12 +345,53 @@ function render(reply, typed){
   }
 }
 
+/* tabs (prototype) and the pilot dashboard (English only; fetched only when the tab is opened) */
+const tabs = document.querySelectorAll("[role=tab]");
+function show(v){
+  tabs.forEach(b => b.setAttribute("aria-selected", String(b.dataset.view === v)));
+  document.querySelectorAll(".view").forEach(s => s.classList.toggle("on", s.id === "view-" + v));
+  if(v === "dashboard") loadStats();
+}
+tabs.forEach(b => b.onclick = () => { show(b.dataset.view); try{ history.replaceState(null, "", b.dataset.view === "dashboard" ? "#dashboard" : location.pathname); }catch(e){} });
+const dash = v => v == null ? "—" : v;
+function bars(id, rows, unit){
+  const max = Math.max(1, ...rows.map(r => r.value || 0));
+  document.getElementById(id).innerHTML = rows.map(r => `<div class="b"><span>${esc(r.label)}</span><div class="track"><div class="fill" style="width:${Math.round((r.value || 0) / max * 100)}%"></div></div><span class="n">${r.value == null ? "—" : esc(r.value) + unit}</span></div>`).join("");
+}
+function kpi(label, value, pct){
+  return `<div class="kpi"><p>${esc(label)}</p><strong>${esc(value)}</strong><div class="meter"><span style="width:${Math.max(0, Math.min(100, pct || 0))}%"></span></div></div>`;
+}
+async function loadStats(){
+  let s;
+  try{ const r = await fetch("/api/stats"); if(!r.ok) throw 0; s = await r.json(); }
+  catch(e){ document.getElementById("d-status").textContent = "Could not load the pilot numbers. Try again in a minute."; return; }
+  const k = s.kpis, pct = v => v == null ? "—" : v + "%";
+  document.getElementById("d-status").textContent = `Official postcode database today: ${s.canary_today}` +
+    (s.pilot_start ? ` · counting from ${s.pilot_start}` : " · the pilot has not started yet");
+  document.getElementById("d-kpis").innerHTML =
+    kpi("Real interactions (PS2 minimum 50)", k.interactions, k.interactions / 50 * 100) +
+    kpi("Left with a valid postcode", pct(k.valid_postcode_pct), k.valid_postcode_pct) +
+    kpi("Did not know their postcode before", pct(k.did_not_know_pct), k.did_not_know_pct) +
+    kpi("Said it helped", pct(k.helped_pct), k.helped_pct);
+  bars("bars-lang", s.by_language, "");
+  bars("bars-helped", s.helped_by_language.map(r => ({label: r.label, value: r.pct})), "%");
+  bars("bars-intent", s.asked_for, "");
+  bars("bars-time", s.median_seconds, " s");
+  document.getElementById("sessions").innerHTML = s.recent.length ? s.recent.map(r =>
+    `<tr><td>${esc(r.time)}</td><td>${esc(r.language)}</td><td>${esc(r.input)}</td><td>${esc(r.intent)}</td><td>${r.postcode === "Not found" || r.postcode === "Error" ? `<span class="chip warn">${esc(r.postcode)}</span>` : esc(r.postcode)}</td><td>${r.latency_s == null ? "—" : esc(r.latency_s) + " s"}</td><td>${esc(r.feedback)}</td></tr>`).join("")
+    : `<tr><td colspan="7">${dash(null)}</td></tr>`;
+}
+
 /* start: wake the GPUs, load the four languages, show the language screen */
 const nav = (navigator.language || "en").slice(0, 2).toLowerCase();
 const pageLang = ORDER.includes(nav) ? nav : "en";
 fetch("/api/warm").catch(() => {});
 Promise.all(ORDER.map(k => fetch("/api/strings/" + k).then(r => r.json()).then(j => { S[k] = j; })))
-  .then(() => { ui = S[pageLang]; showLang(); })
+  .then(() => {
+    ui = S[pageLang]; showLang();
+    document.getElementById("tab-app").textContent = ui.ui_bar_title;
+    if(location.hash === "#dashboard") show("dashboard");
+  })
   .catch(() => { $s.innerHTML = '<button class="big primary" onclick="location.reload()" aria-label="Reload">⟳</button>'; });
 </script>
 </html>

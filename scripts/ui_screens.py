@@ -89,6 +89,8 @@ PAIRS = [  # (name, title, has a prototype counterpart)
     ("12-faq", "FAQ answer (new: template, no generation)", False),
     ("13-yo-language", "Language screen, Yorùbá browser (glyph check)", False),
     ("14-yo-result", "Postcode result in Yorùbá (glyph check)", False),
+    ("15-tab-app", "Tab bar + app tab (deployed page)", True),
+    ("16-tab-dashboard", "Pilot dashboard tab (deployed page, real data: empty before PILOT_START)", True),
 ]
 
 
@@ -212,5 +214,32 @@ def shoot() -> None:
     print(f"wrote {len(list(OUT.glob('*.png')))} screenshots to {OUT.relative_to(ROOT)}")
 
 
+def tabs(base: str = "https://muideen27--voice-postcode-web.modal.run") -> None:
+    """Full-page 360 px screenshots of both tabs on a running page, next to the prototype's."""
+    from playwright.sync_api import sync_playwright
+
+    proto_url = (ROOT / "web" / "design" / "prototype.html").as_uri()
+    with sync_playwright() as p:
+        browser = p.chromium.launch(channel="chrome")
+        ctx = browser.new_context(viewport={"width": 360, "height": 800}, locale="en-US")
+        pg = ctx.new_page()
+        pg.goto(proto_url)
+        pg.wait_for_selector("[data-l]")
+        pg.screenshot(path=str(OUT / "15-tab-app-prototype.png"), full_page=True)
+        pg.click("#tab-dashboard")
+        pg.wait_for_timeout(300)
+        pg.screenshot(path=str(OUT / "16-tab-dashboard-prototype.png"), full_page=True)
+        lv = ctx.new_page()
+        lv.goto(base)
+        lv.wait_for_selector("[data-l]")
+        lv.screenshot(path=str(OUT / "15-tab-app-live.png"), full_page=True)
+        lv.click("#tab-dashboard")
+        lv.wait_for_function("document.getElementById('d-status').textContent !== 'Loading…'", timeout=30000)
+        lv.screenshot(path=str(OUT / "16-tab-dashboard-live.png"), full_page=True)
+        browser.close()
+    print("wrote tab screenshots to", OUT.relative_to(ROOT))
+
+
 if __name__ == "__main__":
-    {"serve": serve, "shoot": shoot}[sys.argv[1] if len(sys.argv) > 1 else "serve"]()
+    mode = sys.argv[1] if len(sys.argv) > 1 else "serve"
+    {"serve": serve, "shoot": shoot, "tabs": tabs}[mode](*sys.argv[2:])

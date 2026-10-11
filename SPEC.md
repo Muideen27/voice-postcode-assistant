@@ -96,6 +96,20 @@ the four language names in their own languages (prototype order en, yo, ha, ig),
 only from prototype parts. Page labels are template keys `ui_*`, `chip`, `conf_*` (reviewed via
 `docs/review/ui_<lang>.csv`).
 
+**Tabs and pilot dashboard.** The prototype's tab bar sits above the app with two tabs: the app (label
+`ui_bar_title`, default) and "Pilot dashboard" (English only). Tab, KPI, bar-card, table and banner styles
+are copied verbatim from the prototype. The dashboard is fetched only when its tab is opened and shows:
+KPIs Real interactions (PS2 minimum 50) · Left with a valid postcode (% of location + validate turns) ·
+Did not know their postcode before (% of knew_before = false) · Said it helped (% yes); cards
+Interactions by language · Said it helped, by language · What people asked for (My postcode / Explain it
+/ Check a code / Other) · Median response time, location vs voice; a status line "Official postcode
+database today: OK | no data | unreachable" from today's canary; the last 10 rows (time WAT, language,
+input, intent, postcode outcome, latency, feedback). Before `PILOT_START` (env, ISO time, set at deploy)
+it shows zeros and "—". No sample data anywhere.
+
+**Footer image slot.** Under the N-ATLaS attribution: `web/assets/footer.webp`, width/height set, alt text
+from `ui_footer_alt`, < 15 KB, removed from the page if the file is missing.
+
 **Web page contract.** The web page must match `web/design/prototype.html` exactly: colours, fonts, layout, spacing, components and screen order. Do not redesign it. Use only the phone screen from the Prototype tab (leave out the tabs, trace panel, dashboard and flow view). Keep its `:root` tokens (light and dark), its fonts (Bricolage Grotesque display, Atkinson Hyperlegible body, JetBrains Mono for codes) and its class names. Strings come from `app/templates`, data from `/api/*`. When the page is built, put 360 px screenshots of each screen next to the prototype's in `docs/ui-compare/`.
 
 **Glyph coverage** (checked 8 Oct 2026 against the Google Fonts files the prototype loads, all subsets):
@@ -146,6 +160,7 @@ Measured page weight (9 Oct): `index.html` (HTML + CSS + JS) **19.6 KB raw, 6.5 
 
 | Path | Warm | Cold (GPU asleep) | Hard limit |
 |---|---|---|---|
+| Page (GET /) | ≤ 2 s (one CPU web container always on; measured 1.1–1.3 s) | — | — |
 | Location → postcode reply | ≤ 3 s | ≤ 3 s (no GPU used) | 10 s |
 | Text → reply | ≤ 5 s | ≤ 20 s, then safety net or `warming_up` | 20 s per LLM call |
 | Voice (≤ 15 s clip) → reply | ≤ 12 s | ASR cold start + 20 s LLM limit | see §3.3 |
@@ -324,6 +339,8 @@ postcode database yet…".
 | `GET /fonts/<file>.woff2` | none | font file, `Cache-Control: public, max-age=31536000, immutable` |
 | `GET /api/strings/<lang>` | none | every template string for that language (the page renders only these) |
 | `POST /api/location-denied` | `{"session"}` | `Reply` (`error`, `location_denied`): geolocation refused or failed |
+| `GET /api/stats` | none | pilot dashboard JSON (KPIs, bars, last 10 rows, today's canary); real log rows from `PILOT_START` only, `/logs/dev/` excluded; 60 s cache; never transcripts or user hashes |
+| `GET /assets/<name>.webp` | none | optional image (footer); 404 when absent, the page hides the slot |
 | `GET /api/warm` | none | `204` at once; starts a 1-token LLM request in the background (not awaited) so the GPU wakes while the user picks a language. Called once per page load. |
 | `POST /api/language` | `{"session":"<uuid>","lang":"yo"}` | `Reply` (`welcome` with consent for a new user, else `menu`) |
 | `POST /api/consent` | `{"session","agree":true\|false}` | `Reply` (`ask_knew_before`, or `declined`) |
@@ -446,6 +463,9 @@ The Twilio echo prototype is kept in `archive/twillo_echo.py`.
   budget HTML+CSS+JS < 50 KB, fonts < 120 KB. Fact sheets out of the review flow.
 - 2026-10-09: ASR revisions pinned; ASR cold/warm timings. New routes `/api/strings/<lang>` and
   `/api/location-denied`. Dev runs (`VP_ENV=dev`) log to `/logs/dev/`.
+- 2026-10-11: `/api/stats` + dashboard tab (`PILOT_START`), `/assets/` footer slot (`ui_footer_alt`),
+  startup rule (background jobs with timeouts, canary 15 s cap), web `min_containers=1` (cold CPU start
+  6-14 s measured, memory snapshot did not help). Secrets: re-deploy after re-creating a secret.
 - 2026-10-09: Data canary (start + 30 min, daily Dict); not-found wording; export_log outputs
   (`docs/validation/interactions.csv`, `summary.md`, `--since` for the pilot start); `warm.sh` warms LLM and
   ASR. Deployed at https://muideen27--voice-postcode-web.modal.run.

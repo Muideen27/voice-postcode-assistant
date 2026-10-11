@@ -76,5 +76,6 @@
   "chip": "{confidence} · {distance} m away",
   "conf_high": "High confidence",
   "conf_medium": "Medium confidence",
-  "conf_low": "Low confidence"
+  "conf_low": "Low confidence",
+  "ui_footer_alt": "Logos: Federal Ministry of Communications, Innovation and Digital Economy, NCAIR and ONDI. NITDA National AI Innovation Challenge."
 }

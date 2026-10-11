@@ -58,3 +58,16 @@ def test_canary_store_failure_is_harmless() -> None:
     assert (
         asyncio.run(run_canary(FakePostcode(LookupResult(CANARY_CODE, True, "valid")), Broken())) == "valid"
     )
+
+
+def test_canary_times_out_as_error() -> None:
+    class Slow(FakePostcode):
+        async def lookup(self, code: str) -> LookupResult:
+            await asyncio.sleep(5)
+            return LookupResult(code, True, "valid")
+
+    store = MemoryCanaryStore()
+    assert (
+        asyncio.run(run_canary(Slow(LookupResult(CANARY_CODE, True, "valid")), store, timeout_s=0.05))
+        == "error"
+    )

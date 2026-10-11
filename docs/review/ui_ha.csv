@@ -23,3 +23,4 @@ chip,{confidence} · {distance} m away,{confidence} · mita {distance},,"Keep {c
 conf_high,High confidence,Tabbaci mai yawa,,
 conf_medium,Medium confidence,Tabbaci matsakaici,,
 conf_low,Low confidence,Tabbaci kaɗan,,
+ui_footer_alt,"Logos: Federal Ministry of Communications, Innovation and Digital Economy, NCAIR and ONDI. NITDA National AI Innovation Challenge.","Tambura: Federal Ministry of Communications, Innovation and Digital Economy, NCAIR da ONDI. NITDA National AI Innovation Challenge.",,Short label on the web page.

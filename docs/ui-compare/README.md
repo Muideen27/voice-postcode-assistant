@@ -19,3 +19,5 @@ simulated data). Only the phone screen element (`#screen`) is captured on both s
 | FAQ answer (new: template, no generation) | — | ![12-faq live](12-faq-live.png) |
 | Language screen, Yorùbá browser (glyph check) | — | ![13-yo-language live](13-yo-language-live.png) |
 | Postcode result in Yorùbá (glyph check) | — | ![14-yo-result live](14-yo-result-live.png) |
+| Tab bar + app tab (deployed page, 11 Oct) | ![15-tab-app prototype](15-tab-app-prototype.png) | ![15-tab-app live](15-tab-app-live.png) |
+| Pilot dashboard tab (deployed page, real data: empty before PILOT_START; prototype shows its example data) | ![16-tab-dashboard prototype](16-tab-dashboard-prototype.png) | ![16-tab-dashboard live](16-tab-dashboard-live.png) |

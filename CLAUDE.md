@@ -106,11 +106,13 @@ app/
   store.py             (exists) user hashing, sessions (Modal Dict), interaction log (Volume, JSONL),
                        anonymous daily decline counter (Modal Dict)
   privacy.py           (exists) scrub()/for_storage(): PII removed + 300-char cap before storing text
-  canary.py            (exists) Postcode API data canary (container start + every 30 min)
+  canary.py            (exists) Postcode API data canary (container start + every 30 min, 15 s cap)
+  stats.py             (exists) log reading (shared with export_log) + pilot dashboard numbers
 data/
   states.json          (exists) state codes -> names, documented codes only (11 so far)
   fact_sheet_<lang>.md (exists) source facts for the faq_* templates; sent to the model only in generate mode
-web/index.html         (exists) the page (19.6 KB, 6.5 KB gzip), no frameworks; matches web/design/prototype.html
+web/index.html         (exists) the page + pilot dashboard tab (27.1 KB, 8.7 KB gzip); matches the prototype
+web/assets/footer.webp (slot) optional footer image under the attribution; < 15 KB; hidden if missing
 web/design/prototype.html (exists) design source of truth (phone screen of the Prototype tab only)
 web/fonts/*.woff2      (exists) self-hosted subset fonts (5 files, 101.3 KiB), built by scripts/build_fonts.py
 deploy/
@@ -127,6 +129,7 @@ tests/                 unit tests only: no network, run by `pytest -q`
   test_web.py          (exists) HTTP -> Event mapping, validation, static files
   test_canary.py       (exists) canary statuses and daily store (fakes)
   test_export_log.py   (exists) merge/sort/dedupe/summary on a fixture log
+  test_stats.py        (exists) dashboard numbers, empty state, never transcripts or user hashes
 evals/                 live-model checks (need GPU/network), never collected by pytest
   natlas_final_test.py (exists) live intent + explain evals; imports prompts.py/llm.py (no copies)
   cases.py             (exists) 40 intent + 12 explain held-out cases
@@ -166,7 +169,10 @@ pip install -r requirements.txt
 # one-time Modal secrets
 modal secret create huggingface HF_TOKEN=hf_xxx
 modal secret create natlas-api NATLAS_API_KEY=$(cat natlas_api_key.txt)
-modal secret create voice-postcode POSTCODE_API_KEY=nipost_test_... HASH_SALT=$(openssl rand -hex 32)
+modal secret create voice-postcode POSTCODE_API_KEY=<real 60-char key> HASH_SALT=$(openssl rand -hex 32)
+# or on the Modal web UI: Secrets -> Create new secret -> Custom -> name exactly `voice-postcode`,
+# keys POSTCODE_API_KEY and HASH_SALT. After deleting/re-creating ANY secret, run `modal deploy app/main.py`
+# again: a deployed app is bound to the old secret's ID and crash-loops ("Secret ... not found") until then.
 
 # LLM server
 modal serve deploy/natlas_serve.py 2>&1 | tee serve.log   # debug, Ctrl+C stops billing
@@ -190,6 +196,7 @@ ruff check . && ruff format .
 # app (once written)
 VP_ENV=dev modal serve app/main.py   # dev; log rows go to /logs/dev/ (never pilot evidence)
 modal deploy app/main.py         # prod: https://muideen27--voice-postcode-web.modal.run
+PILOT_START=2026-10-11T09:00:00+01:00 modal deploy app/main.py   # start counting on the dashboard
 python scripts/export_log.py --pull --since <pilot start ISO>   # evidence -> docs/validation/
 modal app logs <app-name> | tail -n 20
 scripts/warm.sh 90               # pilot: LLM + ASR min_containers=1 for 90 min, then 0 (Ctrl+C resets)
@@ -245,6 +252,11 @@ Quality: Yoruba and Hausa good, Igbo weaker (label it beta). Place names come ou
 - Store user text only through `app.privacy.for_storage()` (scrubbed: numbers, phones, emails; capped at
   300 chars). Raw text may be used inside the turn (regex, intent) but never stored.
 - Language codes everywhere: `en`, `yo`, `ha`, `ig`.
+- **Startup rule.** Nothing may block serving the page: the canary, Volume reloads and GPU warm-ups run
+  in the background with timeouts (tested). One CPU-only web container is always on (`min_containers=1`)
+  because a cold CPU container takes 6-14 s on Modal; the GPUs stay at 0.
+- **Pilot dashboard** (second tab, English only, an approved exception to templates-only strings): real
+  log rows from `PILOT_START` only, never sample data, never transcripts or user hashes (`/api/stats`).
 - Every external failure maps to a friendly, localised message plus a next step.
 
 ## LLM prompt conventions
@@ -316,3 +328,5 @@ account is locked. The Twilio echo prototype is kept in `archive/twillo_echo.py`
   `auth` errors kept apart from not-found; screenshots in `docs/ui-compare/`.
 - 2026-10-09: Deployed (`voice-postcode`). Data canary, `export_log.py`, `warm.sh` for LLM + ASR,
   `docs/pilot_checklist.md`. Not-found wording no longer blames the user or the location.
+- 2026-10-11: Page hang fixed (app bound to a deleted secret; redeploy). Startup rule + always-on CPU web
+  container. Pilot dashboard tab (`/api/stats`, `PILOT_START`). Footer image slot + `ui_footer_alt` key.

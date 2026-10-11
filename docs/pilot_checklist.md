@@ -5,9 +5,9 @@ Run every step in order before the first real user. Tick each box and write the 
 
 ## 1. Before the pilot day
 
-- [ ] **Postcode API key in the app secret.** The `voice-postcode` secret must hold the real key. On 9 Oct
-      it still held the 15-character placeholder (`invalid_api_key`). Re-create it (a new salt is fine
-      until pilot data exists):
+- [x] **Postcode API key in the app secret** (done 10 Oct: real 60-character key, new salt). If you ever
+      re-create the secret, **redeploy**: the app stays bound to the old secret's ID and crash-loops until
+      then (this caused the 10 Oct page hang). Command:
       ```bash
       modal secret create voice-postcode --force POSTCODE_API_KEY=<real key> HASH_SALT=$(openssl rand -hex 32)
       modal deploy app/main.py
@@ -31,8 +31,12 @@ Run every step in order before the first real user. Tick each box and write the 
 
 - [ ] `scripts/warm.sh 120` (or the session length). It prints the LLM and ASR cold-start times and resets
       both GPUs to 0 when the window ends or on Ctrl+C. Leave the terminal open.
-- [ ] Note the **pilot start time** (WAT, ISO format, e.g. `2026-10-10T09:00:00+01:00`); export uses it
-      to leave out the developer smoke tests.
+- [ ] Set the **pilot start time** (WAT, ISO format) so the dashboard and the export leave out the
+      developer smoke tests, then redeploy:
+      ```bash
+      PILOT_START=2026-10-11T09:00:00+01:00 modal deploy app/main.py
+      ```
+      Open the "Pilot dashboard" tab: it should show 0 interactions and today's database status.
 
 ## 3. Real-phone check (Android, Chrome), before testers
 

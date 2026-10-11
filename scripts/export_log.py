@@ -21,6 +21,10 @@ from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+
+from app.stats import load_rows  # noqa: E402  (shared with /api/stats)
+
 OUT = ROOT / "docs" / "validation"
 CSV_COLUMNS = (
     "ts", "user_hash", "channel", "lang", "input", "transcript", "intent", "llm_status", "postcode_found",
@@ -32,36 +36,6 @@ CANARY = ("valid", "not_found", "auth", "error")
 
 
 # ---------------------------------------------------------------- load
-
-
-def load_rows(logs_dir: Path, since: str | None = None) -> tuple[list[dict[str, Any]], dict[str, int]]:
-    """All rows, merged, sorted by ts, deduped on (ts, user_hash). Returns (rows, stats)."""
-    seen: set[tuple[str, str]] = set()
-    rows: list[dict[str, Any]] = []
-    stats = Counter(files=0, lines=0, broken=0, duplicates=0, before_since=0)
-    for path in sorted(logs_dir.glob("interactions-*.jsonl")):  # top level only: dev/ is excluded
-        stats["files"] += 1
-        for line in path.read_text(encoding="utf-8").splitlines():
-            if not line.strip():
-                continue
-            stats["lines"] += 1
-            try:
-                row = json.loads(line)
-                key = (row["ts"], row["user_hash"])
-            except (ValueError, KeyError, TypeError):
-                stats["broken"] += 1
-                continue
-            if key in seen:
-                stats["duplicates"] += 1
-                continue
-            seen.add(key)
-            rows.append(row)
-    rows.sort(key=lambda r: r["ts"])
-    if since:
-        kept = [r for r in rows if r["ts"] >= since]
-        stats["before_since"] = len(rows) - len(kept)
-        rows = kept
-    return rows, dict(stats)
 
 
 def flatten(row: dict[str, Any]) -> dict[str, Any]:

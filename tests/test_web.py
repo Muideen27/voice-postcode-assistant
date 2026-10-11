@@ -164,3 +164,34 @@ def test_on_start_jobs_run_when_the_app_starts(tmp_path: Path) -> None:
     with TestClient(create_api(Recorder(), "salt", tmp_path, T, on_start=[canary])) as client:
         client.get("/")
     assert ran == ["canary"]
+
+
+def test_slow_startup_jobs_never_block_the_page(tmp_path: Path) -> None:
+    import time
+
+    (tmp_path / "index.html").write_text("page")
+
+    async def slow_canary() -> None:
+        await asyncio.sleep(30)  # e.g. an unreachable Postcode API
+
+    started = time.perf_counter()
+    with TestClient(create_api(Recorder(), "salt", tmp_path, T, on_start=[slow_canary])) as client:
+        assert client.get("/").text == "page"
+        assert client.get("/api/strings/en").status_code == 200
+        assert time.perf_counter() - started < 2.0
+
+
+def test_stats_route_and_optional_asset(tmp_path: Path) -> None:
+    (tmp_path / "index.html").write_text("x")
+
+    async def stats() -> dict[str, Any]:
+        return {"kpis": {"interactions": 0}}
+
+    client = TestClient(create_api(Recorder(), "salt", tmp_path, T, stats=stats))
+    assert client.get("/api/stats").json() == {"kpis": {"interactions": 0}}
+    assert client.get("/assets/footer.webp").status_code == 404  # missing file: the page hides the slot
+    (tmp_path / "assets").mkdir()
+    (tmp_path / "assets" / "footer.webp").write_bytes(b"RIFF....WEBP")
+    assert client.get("/assets/footer.webp").headers["content-type"] == "image/webp"
+    assert client.get("/assets/../index.html").status_code == 404
+    assert TestClient(create_api(Recorder(), "salt", tmp_path, T)).get("/api/stats").status_code == 404

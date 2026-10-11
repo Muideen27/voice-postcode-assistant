@@ -20,6 +20,7 @@ from app.store import hash_user
 
 _UUID_RE = re.compile(r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}")
 _FONT_RE = re.compile(r"[a-z0-9-]+\.woff2")
+_ASSET_RE = re.compile(r"[a-z0-9-]+\.webp")
 FONT_CACHE = "public, max-age=31536000, immutable"
 MAX_TEXT = 500
 
@@ -67,6 +68,7 @@ def create_api(
     templates: dict[Lang, dict[str, str]],
     warmers: list[Warmer] | None = None,
     on_start: list[Warmer] | None = None,
+    stats: Callable[[], Awaitable[dict[str, Any]]] | None = None,
 ) -> FastAPI:
     background: set[asyncio.Task[Any]] = set()  # keep references so background tasks are not collected
 
@@ -109,6 +111,21 @@ def create_api(
         if not _FONT_RE.fullmatch(name) or not path.is_file():
             raise HTTPException(status_code=404)
         return FileResponse(path, media_type="font/woff2", headers={"Cache-Control": FONT_CACHE})
+
+    @api.get("/assets/{name}")
+    async def asset(name: str) -> FileResponse:
+        """Optional images (web/assets/footer.webp). Missing file -> 404 and the page hides the slot."""
+        path = web_dir / "assets" / name
+        if not _ASSET_RE.fullmatch(name) or not path.is_file():
+            raise HTTPException(status_code=404)
+        return FileResponse(path, media_type="image/webp", headers={"Cache-Control": "public, max-age=86400"})
+
+    @api.get("/api/stats")
+    async def pilot_stats() -> JSONResponse:
+        """Pilot dashboard numbers (real log rows from PILOT_START only; never transcripts or user hashes)."""
+        if stats is None:
+            raise HTTPException(status_code=404)
+        return JSONResponse(await stats(), headers={"Cache-Control": "no-store"})
 
     @api.get("/api/strings/{lang}")
     async def strings(lang: str) -> JSONResponse:

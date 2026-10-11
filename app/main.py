@@ -8,8 +8,10 @@ State: sessions and daily decline counts in Modal Dicts; the interaction log on 
 Volume (one JSONL file per container per day). The LLM runs in the separate `natlas-serve` app.
 """
 
+import json
 import os
 from pathlib import Path
+from typing import Any
 
 import modal
 
@@ -34,7 +36,16 @@ image = (
     )
     # VP_ENV=dev (set when running `VP_ENV=dev modal serve app/main.py`) sends log rows to /logs/dev/, which
     # export_log.py ignores, so developer test turns never count as pilot evidence.
-    .env({"NATLAS_URL": NATLAS_URL, "EXPLAIN_MODE": "faq", "VP_ENV": os.environ.get("VP_ENV", "prod")})
+    # PILOT_START (ISO time, set at deploy: `PILOT_START=2026-10-10T09:00:00+01:00 modal deploy app/main.py`):
+    # the dashboard counts only log rows from then on. Unset -> the dashboard shows its empty state.
+    .env(
+        {
+            "NATLAS_URL": NATLAS_URL,
+            "EXPLAIN_MODE": "faq",
+            "VP_ENV": os.environ.get("VP_ENV", "prod"),
+            "PILOT_START": os.environ.get("PILOT_START", ""),
+        }
+    )
     .add_local_python_source("app", ignore=["**/__pycache__/**"])  # include the JSON templates
     .add_local_dir("data", str(ROOT / "data"))
     .add_local_dir("web", str(ROOT / "web"), ignore=["design/**"])
@@ -47,13 +58,58 @@ logs_volume = modal.Volume.from_name("voice-postcode-logs", create_if_missing=Tr
 SECRETS = [modal.Secret.from_name("voice-postcode"), modal.Secret.from_name("natlas-api")]
 
 
+STATS_CACHE_S = 60
+_stats_cache: dict[str, Any] = {"at": 0.0, "value": None}
+
+
+async def pilot_stats() -> dict[str, Any]:
+    """Dashboard numbers from the log Volume + Dicts, cached 60 s. Each step has a timeout; on failure the
+    last cached value (or the empty state) is returned, so the dashboard never hangs the page."""
+    import asyncio
+    import time
+
+    from app.stats import compute_stats, load_rows
+
+    if _stats_cache["value"] is not None and time.time() - _stats_cache["at"] < STATS_CACHE_S:
+        return _stats_cache["value"]
+    start = os.environ.get("PILOT_START") or None
+    rows: list[dict[str, Any]] = []
+    canary: dict[str, Any] = {}
+    try:
+        await asyncio.wait_for(logs_volume.reload.aio(), 10)  # see other containers' log commits
+    except Exception as exc:
+        print(json.dumps({"event": "stats_reload_error", "error": type(exc).__name__}))
+    try:
+        if start:
+            rows, _ = await asyncio.to_thread(
+                load_rows, Path("/logs"), start
+            )  # top level only: dev/ excluded
+        canary = dict([item async for item in canary_dict.items.aio()])
+    except Exception as exc:
+        print(json.dumps({"event": "stats_error", "error": type(exc).__name__}))
+    value = compute_stats(rows, canary, start)
+    _stats_cache.update(at=time.time(), value=value)
+    return value
+
+
 def session_store():
     from app.store import ModalDictSessionStore, TtlSessionStore
 
     return TtlSessionStore(ModalDictSessionStore(sessions_dict))
 
 
-@app.function(image=image, secrets=SECRETS, volumes={"/logs": logs_volume}, scaledown_window=300, timeout=300)
+# Startup rule: nothing may block serving the page. The canary runs as a background task (15 s cap); GPU
+# warm-up only runs from /api/warm, in the background. A cold CPU container on Modal takes 6-14 s
+# (measured 10 Oct, with and without a memory snapshot), so one CPU-only web container is always kept
+# running: the page loads in ~1 s for every user. The GPUs (LLM, ASR) stay at min_containers=0.
+@app.function(
+    image=image,
+    secrets=SECRETS,
+    volumes={"/logs": logs_volume},
+    scaledown_window=300,
+    timeout=300,
+    min_containers=1,  # CPU only; keeps the page instant (see the startup rule above)
+)
 @modal.concurrent(max_inputs=50)
 @modal.asgi_app()
 def web():
@@ -92,6 +148,7 @@ def web():
         templates,
         warmers=[llm.warm, warm_asr],
         on_start=[lambda: run_canary(postcode, canary_store)],
+        stats=pilot_stats,
     )
 
 
@@ -112,8 +169,6 @@ async def postcode_canary() -> None:
 @app.function(image=image, schedule=modal.Period(minutes=15), timeout=120)
 async def sweep_unconsented() -> None:
     """Delete sessions that never answered the consent screen within 30 minutes (SPEC §3.8)."""
-    import json
-
     items = [item async for item in sessions_dict.items.aio()]
     removed = await session_store().sweep(items)
     print(json.dumps({"event": "session_sweep", "checked": len(items), "removed": removed}))
