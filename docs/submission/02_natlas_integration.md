@@ -4,7 +4,7 @@ title: "N-ATLaS integration — Voice Postcode Assistant"
 
 # N-ATLaS integration
 
-**Voice Postcode Assistant** · NAIC 2026 · Innovation & Enterprise track · PS2 Voice-First Access ·
+**Voice Postcode Assistant** · Team VoxPost NG · NAIC 2026 · Innovation & Enterprise track · PS2 Voice-First Access ·
 Live: <https://muideen27--voice-postcode-web.modal.run> · Code: <https://github.com/Muideen27/voice-postcode-assistant>
 
 N-ATLaS is an initiative of the Federal Ministry of Communications, Innovation and Digital Economy, and

@@ -4,7 +4,7 @@ title: "Validation report — Voice Postcode Assistant"
 
 # Validation report
 
-**Voice Postcode Assistant** · NAIC 2026 · PS2 Voice-First Access · civic information ·
+**Voice Postcode Assistant** · Team VoxPost NG · NAIC 2026 · PS2 Voice-First Access · civic information ·
 Live: <https://muideen27--voice-postcode-web.modal.run>
 
 N-ATLaS is an initiative of the Federal Ministry of Communications, Innovation and Digital Economy, and
@@ -23,7 +23,7 @@ the pilot start time).
   one phone used by several different people, so the session count (7) is lower than the number of people.
 - **Fellow participants:** some testers on 12 Oct were fellow NAIC participants; they could not be
   separated in the anonymised log.
-- **Developer sessions excluded:** the developer's own test sessions and device are left out of every
+- **Team sessions excluded:** the team's own test sessions and devices are left out of every
   number (salted session hashes listed in `scripts/excluded_hashes.txt`).
 - **Setting:** testers used their own Android phones and mobile data, opening the live link. A facilitator
   read the tester script (`docs/pilot_checklist.md`, section 4) and did not touch the phone. During

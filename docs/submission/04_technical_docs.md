@@ -4,7 +4,7 @@ title: "Technical documentation — Voice Postcode Assistant"
 
 # Technical documentation
 
-**Voice Postcode Assistant** · Live: <https://muideen27--voice-postcode-web.modal.run> ·
+**Voice Postcode Assistant** · Team VoxPost NG · Live: <https://muideen27--voice-postcode-web.modal.run> ·
 Code: <https://github.com/Muideen27/voice-postcode-assistant>
 
 N-ATLaS is an initiative of the Federal Ministry of Communications, Innovation and Digital Economy, and

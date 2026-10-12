@@ -3,7 +3,8 @@
 **Live: <https://muideen27--voice-postcode-web.modal.run>**
 
 Get, check and understand your new Nigerian postcode **by speaking Yorùbá, Hausa, Igbo or Nigerian
-English**. Built for the National AI Innovation Challenge (NAIC) 2026, Innovation & Enterprise track,
+English**. Built by **team VoxPost NG** (Muideen Ilori, AI/ML Engineer and team lead; Olakanmi Joshua,
+Product Manager) for the National AI Innovation Challenge (NAIC) 2026, Innovation & Enterprise track,
 PS2 Voice-First Access, as a low-bandwidth mobile web app.
 
 - Speech is recognised by the official **NCAIR1** speech models for the language you choose.
