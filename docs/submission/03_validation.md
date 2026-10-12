@@ -78,11 +78,12 @@ shown**, so the answer is not biased by the result: {{KNEW_NO}} said no, {{KNEW_
 
 {{TABLE_DECLINES}}
 
-### Recent sessions (last 10 logged turns)
+### Example transcripts
 
-Shown without transcripts or user IDs.
+At most three real transcripts, each checked by hand to contain no personal data (no names, phone
+numbers, addresses or other identifying details). All other evidence in this report is aggregated.
 
-{{TABLE_RECENT}}
+{{EXAMPLE_TRANSCRIPTS}}
 
 ## 4. Official postcode data during the pilot
 
