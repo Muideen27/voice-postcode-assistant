@@ -21,7 +21,7 @@ from playwright.sync_api import sync_playwright
 ROOT = Path(__file__).resolve().parents[1]
 SUBMISSION = ROOT / "docs" / "submission"
 BUILD = SUBMISSION / "build"
-DOCS = ("02_natlas_integration", "03_validation", "04_technical_docs")
+DOCS = ("02_natlas_integration", "03_validation", "04_technical_docs", "06_team_profile")
 SPECIAL = set("ẹọṣɓɗƙƴịụṅẸỌṢƁƊƘƳỊỤṄàáèéìíòóùúńÀÁÈÉÌÍÒÓÙÚ")
 
 CSS = """
