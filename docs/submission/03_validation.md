@@ -18,9 +18,13 @@ the pilot start time).
 ## 1. Method
 
 - **Pilot dates:** {{PILOT_DATES}} (first logged turn {{PILOT_FIRST_TURN}}, last {{PILOT_LAST_TURN}}).
-- **Testers:** {{N_TESTERS}} non-developer testers, recruited as follows: {{TESTER_RECRUITMENT}}. The
-  developer's own test sessions are excluded from every number (salted session hashes listed in
-  `scripts/excluded_hashes.txt`).
+- **Testers:** {{N_TESTERS}}, all non-developers. Recruitment: {{TESTER_RECRUITMENT}}
+- **Shared phone:** one session on 12 Oct (08:07–08:53 WAT, 36 logged turns in all four languages) was
+  one phone used by several different people, so the session count (7) is lower than the number of people.
+- **Fellow participants:** some testers on 12 Oct were fellow NAIC participants; they could not be
+  separated in the anonymised log.
+- **Developer sessions excluded:** the developer's own test sessions and device are left out of every
+  number (salted session hashes listed in `scripts/excluded_hashes.txt`).
 - **Setting:** testers used their own Android phones and mobile data, opening the live link. A facilitator
   read the tester script (`docs/pilot_checklist.md`, section 4) and did not touch the phone. During
   sessions both GPUs were kept warm with `scripts/warm.sh`.

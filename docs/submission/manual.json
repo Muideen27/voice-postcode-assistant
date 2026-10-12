@@ -1,7 +1,7 @@
 {
   "PILOT_DATES": "11–12 October 2026",
   "N_TESTERS": "",
-  "TESTER_RECRUITMENT": "",
+  "TESTER_RECRUITMENT": "Personal WhatsApp invitations to friends, family and colleagues, plus fellow NAIC participants; live, supervised sessions on 11–12 October 2026. Testers used their own phones, and one phone was shared. No names, phone numbers or NIN were collected.",
   "UNREVIEWED_LANGUAGES": "Yorùbá, Hausa and Igbo. Testers saw the developer's draft translations; the native-speaker review was not completed before the pilot (English is final)",
   "EXAMPLE_TRANSCRIPTS": "| Language, input | What the speech model heard (exactly as transcribed) | Approximate meaning (developer's translation) | Routed to |\n|---|---|---|---|\n| English, voice | \"hi, good morning. so i want to check for my post code. can you help me do that please?\" | (English) | ask for location |\n| Yorùbá, voice | \"ẹjọ́rọ̀ mú fẹ́ mú pósíkòdì ilé mi, ìjọsẹ̀ ríi bá mi ṣe àyẹ̀wò pósíkòdì ilé mi ẹjọ́.\" | \"Please, I want my house postcode; please help me check my house postcode.\" | ask for location |\n| Igbo, voice | \"biko onu, i nyere ha m aka lelee koodu zipam\" | \"Please, help me check my postcode.\" | ask for the code or location |"
 }
