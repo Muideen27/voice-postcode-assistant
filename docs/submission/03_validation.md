@@ -18,7 +18,9 @@ the pilot start time).
 ## 1. Method
 
 - **Pilot dates:** {{PILOT_DATES}} (first logged turn {{PILOT_FIRST_TURN}}, last {{PILOT_LAST_TURN}}).
-- **Testers:** {{N_TESTERS}} non-developer testers, recruited as follows: {{TESTER_RECRUITMENT}}.
+- **Testers:** {{N_TESTERS}} non-developer testers, recruited as follows: {{TESTER_RECRUITMENT}}. The
+  developer's own test sessions are excluded from every number (salted session hashes listed in
+  `scripts/excluded_hashes.txt`).
 - **Setting:** testers used their own Android phones and mobile data, opening the live link. A facilitator
   read the tester script (`docs/pilot_checklist.md`, section 4) and did not touch the phone. During
   sessions both GPUs were kept warm with `scripts/warm.sh`.
@@ -38,7 +40,7 @@ the pilot start time).
 |---|---|
 | Real interactions (logged turns after consent; PS2 minimum 50) | **{{N_INTERACTIONS}}** |
 | Content turns (voice, text, location) | {{N_CONTENT_TURNS}} |
-| Unique users | {{N_USERS}} |
+| Unique users (browser sessions; a phone shared by several people counts once) | {{N_USERS}} |
 | Turns that reached the Postcode API / with a postcode | {{N_POSTCODE_TURNS}} / {{N_WITH_POSTCODE}} |
 | "Did this help?" yes / no | {{FEEDBACK_YES}} / {{FEEDBACK_NO}} |
 | Knew their postcode before: yes / no / skipped or not asked | {{KNEW_YES}} / {{KNEW_NO}} / {{KNEW_SKIPPED}} |
@@ -115,5 +117,8 @@ every 30 minutes, and records the result per day:
 4. **Speech recognition accuracy was measured offline only** (recorded test clips), not live: the pilot
    does not store audio, so live word accuracy cannot be computed.
 5. Location answers depend on the phone's GPS accuracy and on the API's 50 m / 250 m search radius.
+   **Repeated attempts are counted as logged:** on 12 Oct one user shared their location four times within
+   20 seconds (11:28–11:29 WAT); each attempt is a separate logged turn and is included in the totals,
+   as is every other turn. Interactions are counted exactly as logged, without merging repeats.
 6. Language-model cold start (about 2 minutes) is avoided during sessions by keeping the GPUs warm; outside
    sessions the first request may wait and the page says so.

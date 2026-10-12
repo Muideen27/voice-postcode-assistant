@@ -6,3 +6,4 @@ e39165aeee1b7f73e6f1c603c1ca58fe3d0778e3e2a920c4a5bec43ca4c4f6d6  # smoke test, 
 398d039eaf4ce674bafb4418d1b792af444cd4707bf21c0fc982b22bc23d12fa  # capture_examples.py for the submission docs (11 Oct 05:42 WAT)
 ea3487a0442f6d38f4fb827b95b0b781eb5e91daa544f692a3d998853ebb67fa  # live code-check test after deploy b5c0987 (11 Oct 14:44 WAT)
 af3d2bc9c6552f54fb71612f6d4330368384fccc5217254c20d809ade6d20289  # prod logging check after deploy (12 Oct 07:39 WAT)
+e04cde88697f47bbedab5287ac7ffd722de75c64b56b48952e7531da3b8d0967  # developer's own device (confirmed by the user, 12 Oct)
