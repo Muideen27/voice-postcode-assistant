@@ -16,14 +16,13 @@ BASE = "https://api.postcode.gov.ng"
 OUT = Path(__file__).resolve().parents[1] / "tests" / "fixtures" / "postcode"
 
 # Ikeja (known valid), the Atlantic off Lagos (expected: nothing within 250 m), a valid and an invalid
-# code, a level our L1 key does not have, and autocomplete.
+# code, and a level our L1 key does not have.
 CALLS = {
     "reverse_found.json": ("/v1/search/reverse", {"lat": 6.6018, "lng": 3.3515, "max_distance_m": 250}),
     "reverse_not_found.json": ("/v1/search/reverse", {"lat": 6.2, "lng": 3.4, "max_distance_m": 250}),
     "lookup_valid.json": ("/v1/lookup", {"code": "LA-11-A12-GN-01", "level": 1}),
     "lookup_not_found.json": ("/v1/lookup", {"code": "LA-11-W06-TC-10", "level": 1}),
     "error_level_not_granted.json": ("/v1/lookup", {"code": "LA-11-A12-GN-01", "level": 2}),
-    "autocomplete_la11.json": ("/v1/search/autocomplete", {"q": "LA11"}),
 }
 NO_KEY_CALL = ("error_auth_required.json", "/v1/lookup", {"code": "LA-11-A12-GN-01", "level": 1})
 

@@ -218,3 +218,53 @@ def test_stats_route(tmp_path: Path) -> None:
     assert client.get("/api/stats").json() == {"kpis": {"interactions": 0}}
     assert client.get("/assets/footer.webp").status_code == 404  # no image slot: text attribution only
     assert TestClient(create_api(Recorder(), "salt", tmp_path, T)).get("/api/stats").status_code == 404
+
+
+# ---------------------------------------------------------------- rate limits
+
+
+def test_rate_limiter_sliding_window() -> None:
+    from app.channels.web import RateLimiter
+
+    now = [0.0]
+    limiter = RateLimiter(2, 10, clock=lambda: now[0])
+    assert limiter.allow("a") and limiter.allow("a")
+    assert not limiter.allow("a")
+    assert limiter.allow("b")  # another client is independent
+    now[0] = 10.0
+    assert limiter.allow("a")  # the window has moved on
+
+
+def test_gpu_routes_return_429_over_the_limit(tmp_path: Path) -> None:
+    from app.channels.web import RateLimiter
+
+    (tmp_path / "index.html").write_text("x")
+    limits = {"voice": RateLimiter(1, 600), "text": RateLimiter(1, 600), "warm": RateLimiter(1, 60)}
+    client = TestClient(create_api(Recorder(), "salt", tmp_path, T, limits=limits))
+    ip_a, ip_b = {"x-forwarded-for": "198.51.100.7"}, {"x-forwarded-for": "203.0.113.9, 10.0.0.1"}
+    body = {"session": SESSION, "text": "hi"}
+    assert client.post("/api/text", json=body, headers=ip_a).status_code == 200
+    blocked = client.post("/api/text", json=body, headers=ip_a)
+    assert blocked.status_code == 429 and blocked.headers["retry-after"] == "60"
+    assert client.post("/api/text", json=body, headers=ip_b).status_code == 200  # other client unaffected
+    files = {"audio": ("n.webm", b"x", "audio/webm")}
+    assert client.post("/api/voice", data={"session": SESSION}, files=files, headers=ip_a).status_code == 200
+    assert client.post("/api/voice", data={"session": SESSION}, files=files, headers=ip_a).status_code == 429
+    assert client.get("/api/warm", headers=ip_a).status_code == 200
+    assert client.get("/api/warm", headers=ip_a).status_code == 429
+    # location, consent and the page itself are never limited (no GPU)
+    for _ in range(3):
+        assert (
+            client.post(
+                "/api/location", json={"session": SESSION, "lat": 6.6, "lng": 3.3}, headers=ip_a
+            ).status_code
+            == 200
+        )
+
+
+def test_default_limits_are_generous_for_shared_wifi() -> None:
+    from app.channels.web import default_limits
+
+    limits = default_limits()
+    assert (limits["voice"].limit, limits["voice"].window_s) == (60, 600)
+    assert (limits["text"].limit, limits["warm"].limit) == (120, 150)

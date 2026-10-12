@@ -13,3 +13,4 @@ llama.cpp/
 docs/submission/build/
 !scripts/excluded_hashes.txt
 docs/validation/*.csv
+docs/review/

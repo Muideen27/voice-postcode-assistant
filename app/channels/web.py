@@ -3,14 +3,17 @@ SPEC.md §3.7. No logic lives here; the browser session UUID is hashed before an
 """
 
 import asyncio
+import hashlib
 import re
+import time
+from collections import deque
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
 from dataclasses import asdict
 from pathlib import Path
 from typing import Annotated, Any
 
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, Field
 
@@ -61,6 +64,47 @@ class FeedbackIn(BaseModel):
     skipped: bool = False  # knew_before question skipped (sent with knew_before null)
 
 
+class RateLimiter:
+    """Sliding-window request limit per client, kept in memory only (never stored or logged).
+
+    Protects the GPU-backed routes from a bot during judging. Per web container; one is always on, so
+    in practice it is global. Limits are generous because on-site testers often share one WiFi IP.
+    """
+
+    def __init__(self, limit: int, window_s: float, clock: Callable[[], float] = time.monotonic) -> None:
+        self.limit = limit
+        self.window_s = window_s
+        self._clock = clock
+        self._hits: dict[str, deque[float]] = {}
+
+    def allow(self, key: str) -> bool:
+        now = self._clock()
+        hits = self._hits.setdefault(key, deque())
+        while hits and now - hits[0] >= self.window_s:
+            hits.popleft()
+        if len(hits) >= self.limit:
+            return False
+        hits.append(now)
+        if len(self._hits) > 10_000:  # forget idle clients so memory stays small
+            self._hits = {k: v for k, v in self._hits.items() if v and now - v[-1] < self.window_s}
+        return True
+
+
+def default_limits() -> dict[str, RateLimiter]:
+    return {
+        "voice": RateLimiter(60, 600),  # ASR GPU
+        "text": RateLimiter(120, 600),  # LLM GPU
+        "warm": RateLimiter(150, 60),  # the page polls this every 8-15 s while a model is cold
+    }
+
+
+def client_key(request: Request) -> str:
+    """Hashed client IP (first X-Forwarded-For hop behind Modal's proxy). Held in memory only."""
+    forwarded = request.headers.get("x-forwarded-for", "")
+    ip = forwarded.split(",")[0].strip() or (request.client.host if request.client else "unknown")
+    return hashlib.sha256(ip.encode()).hexdigest()[:16]
+
+
 def create_api(
     handle: Handler,
     salt: str,
@@ -70,7 +114,15 @@ def create_api(
     on_start: list[Warmer] | None = None,
     stats: Callable[[], Awaitable[dict[str, Any]]] | None = None,
     readiness: Callable[[], Awaitable[dict[str, bool]]] | None = None,
+    limits: dict[str, RateLimiter] | None = None,
 ) -> FastAPI:
+    limiters = limits if limits is not None else default_limits()
+
+    def check_rate(name: str, request: Request) -> None:
+        limiter = limiters.get(name)
+        if limiter is not None and not limiter.allow(client_key(request)):
+            raise HTTPException(status_code=429, detail="too many requests", headers={"Retry-After": "60"})
+
     background: set[asyncio.Task[Any]] = set()  # keep references so background tasks are not collected
 
     def spawn(job: Warmer) -> None:
@@ -130,9 +182,10 @@ def create_api(
     last_warm = {"at": -WARM_COOLDOWN_S}
 
     @api.get("/api/warm")
-    async def warm() -> JSONResponse:
+    async def warm(request: Request) -> JSONResponse:
         """Which GPUs are ready ({"llm", "asr"}), bounded to ~3 s. If either is cold, start the warm-ups in
         the background (not again within WARM_COOLDOWN_S). The page polls this while something is cold."""
+        check_rate("warm", request)
         status = {"llm": True, "asr": True}
         if readiness is not None:
             try:
@@ -167,14 +220,17 @@ def create_api(
 
     @api.post("/api/voice")
     async def voice(
+        request: Request,
         session: Annotated[str, Form()],
         audio: Annotated[UploadFile, File()],
     ) -> JSONResponse:
+        check_rate("voice", request)
         data = await audio.read(MAX_BYTES + 1)  # the ASR service rejects anything over the limit
         return await reply(event(session, "voice", audio=data, audio_mime=audio.content_type))
 
     @api.post("/api/text")
-    async def text(body: TextIn) -> JSONResponse:
+    async def text(body: TextIn, request: Request) -> JSONResponse:
+        check_rate("text", request)
         return await reply(event(body.session, "text", text=body.text))
 
     @api.post("/api/feedback")

@@ -135,7 +135,6 @@ evals/                 live-model checks (need GPU/network), never collected by 
   natlas_final_test.py (exists) live intent + explain evals; imports prompts.py/llm.py (no copies)
   cases.py             (exists) 40 intent + 12 explain held-out cases
   runs/                (exists) one JSON per eval run
-  test_natlas_asr.py   (exists) ASR access check + transcription (laptop)
   asr_smoke.py         (exists) live GPU smoke test: `modal run evals/asr_smoke.py --clips yo:yo_test.wav`
   results.md           (exists) eval scores, one entry per prompt change
 scripts/
@@ -150,15 +149,12 @@ scripts/
   capture_examples.py  (exists) real requests/responses for the docs -> docs/submission/examples/
   fill_submission.py   (exists) {{PLACEHOLDERS}} in docs/submission/*.md from docs/validation/ -> build/
   build_submission.py  (exists) build/*.md -> docs/submission/*.pdf (Chrome, Noto Sans, glyph check)
-archive/
-  twillo_echo.py       (archived) Twilio WhatsApp echo prototype, see Future work
 docs/                  submission PDFs (integration evidence, validation, technical docs, team)
   pilot_checklist.md   (exists) secret, reviews, gates, warm-up, real-phone check, tester script
   submission/          (exists) 02-04 .md + .pdf, 05 video plan, 06 team template, manual.json, examples/
   validation/          export_log.py output: interactions.csv, summary.md
-  review/<lang>.csv    (exists) review sheets for yo, ha, ig (all strings except faq_*)
-  review/faq_<lang>.csv (exists) short FAQ-answer review sheets
-  review/ui_<lang>.csv (exists) page-label review sheets (ui_*, chip, conf_*)
+  review/              (generated, not committed) `python scripts/review_sheet.py` writes the yo/ha/ig
+                       review sheets here (<lang>.csv, faq_<lang>.csv, ui_<lang>.csv) when a review is due
   ui-compare/          (exists) live vs prototype screenshots + README table
 SPEC.md                (exists) stack, pinned versions, constraints, component contracts
 pyproject.toml         (exists) ruff + pytest config
@@ -191,8 +187,7 @@ curl -L "$NATLAS_URL/v1/models" -H "Authorization: Bearer $NATLAS_API_KEY"   # h
 python evals/natlas_final_test.py            # health + intent + explain, writes evals/runs/*.json
 python evals/natlas_final_test.py intent
 python evals/natlas_final_test.py explain
-python evals/test_natlas_asr.py check
-python evals/test_natlas_asr.py yo sample.wav
+modal run evals/asr_smoke.py --clips yo:yo_test.wav,ha:ha_test.wav   # live ASR check on the GPU
 
 # unit tests and lint (no network)
 pytest -q                        # default run excludes pilot gates
@@ -327,7 +322,8 @@ The core is channel-agnostic: the orchestrator only sees `Event` and returns `Re
 already exists. A WhatsApp adapter (Twilio webhook replying inline with TwiML, or the Meta Cloud API) can
 be added later as one more thin file in `app/channels/` without touching the orchestrator. It is out of
 scope for NAIC 2026: the Twilio trial did not forward voice notes or locations and the Meta business
-account is locked. The Twilio echo prototype is kept in `archive/twillo_echo.py`.
+account is locked. (The Twilio echo prototype from the planning stage was removed on 12 Oct; it is in the
+git history.)
 
 ## Changelog
 
@@ -368,3 +364,6 @@ account is locked. The Twilio echo prototype is kept in `archive/twillo_echo.py`
 - 2026-10-12: Checked: no turns lost after 15:25 Sun (logs + session counts). `scripts/excluded_hashes.txt`
   (5 developer sessions) applied by export and dashboard; `PILOT_START` defaults to 11 Oct 00:00 WAT;
   content turns on the dashboard. Prod logging verified end to end (Volume + dashboard in 6 s).
+- 2026-10-12: Final review. Removed planning-stage files (`archive/twillo_echo.py`,
+  `evals/test_natlas_asr.py`, unused autocomplete fixture, generated `docs/review/*.csv`). Per-IP rate limit
+  on the GPU-backed routes. Known limitations recorded in SPEC.md.

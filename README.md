@@ -33,7 +33,7 @@ The page loads in about a second, and it starts the models as soon as it opens. 
 model, about 2 minutes, the first time only". After that, replies take a few seconds. Location and postcode
 checks never wait for the language model.
 
-Note: on 9–11 Oct 2026 the official Postcode API returned no postcode data at all, even for codes that were
+Note: on 9–12 Oct 2026 the official Postcode API returned no postcode data at all, even for codes that were
 valid on 3 Oct (details in the validation report). Until the data returns, location and code checks answer
 honestly that the official database has no postcode yet.
 

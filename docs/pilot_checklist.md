@@ -18,7 +18,8 @@ Run every step in order before the first real user. Tick each box and write the 
       "The official postcode database has no postcode for this spot yet"), or wait. The canary table
       in `docs/validation/summary.md` records which days had no data.
 - [ ] **Native-speaker reviews applied.** For yo, ha and ig, the three sheets
-      `docs/review/<lang>.csv`, `faq_<lang>.csv` and `ui_<lang>.csv` are filled and applied:
+      `docs/review/<lang>.csv`, `faq_<lang>.csv` and `ui_<lang>.csv` (generate them first with
+      `python scripts/review_sheet.py`) are filled and applied:
       ```bash
       python scripts/apply_review.py yo                          # then ha, ig
       python scripts/apply_review.py yo docs/review/faq_yo.csv

@@ -433,13 +433,28 @@ results per day.
 
 ---
 
+## Known limitations (final review, 12 Oct 2026)
+
+- **Rate limit is per IP and in memory.** `/api/voice` 60 per 10 min, `/api/text` 120 per 10 min,
+  `/api/warm` 150 per min per client IP (hashed, never stored), HTTP 429 above that. It stops floods, but
+  a slow caller (one `/api/warm` every 2 minutes) can still keep the GPUs awake; GPU warm-ups are also
+  capped at one per 120 s globally. Watch the Modal spend during judging.
+- **The 1,000-active-users-per-30-days licence cap is not enforced in code.** Usage is far below it
+  (7 pilot sessions); the session Dict and the interaction log are where it would be counted.
+- **Export de-duplication key is (ts, user_hash) at one-second resolution.** Two different turns of one
+  session in the same second are merged (seen once, on 9 Oct, before the pilot window; the pilot numbers
+  are unaffected). A safer rule is to drop only rows identical in every field.
+- **ASR language is selected by model, not forced in `generate()`.** Each language has its own fine-tuned
+  model, so the user's choice is respected; Whisper still logs that it may auto-detect. All pilot
+  transcripts came out in the chosen language.
+
 ## Future work
 
 The core is channel-agnostic: `Event` → orchestrator → `Reply`, with `Event.channel` already in place.
 A WhatsApp adapter (Twilio webhook with inline TwiML replies, or the Meta Cloud API) can be added later as
 a thin `app/channels/` file plus its own secret and latency budget, without changing the orchestrator.
 It is out of scope for NAIC 2026 (Twilio trial did not forward voice or location; Meta account locked).
-The Twilio echo prototype is kept in `archive/twillo_echo.py`.
+The Twilio echo prototype from the planning stage was removed on 12 Oct (it is in the git history).
 
 ---
 
@@ -476,6 +491,9 @@ The Twilio echo prototype is kept in `archive/twillo_echo.py`.
   budget HTML+CSS+JS < 50 KB, fonts < 120 KB. Fact sheets out of the review flow.
 - 2026-10-09: ASR revisions pinned; ASR cold/warm timings. New routes `/api/strings/<lang>` and
   `/api/location-denied`. Dev runs (`VP_ENV=dev`) log to `/logs/dev/`.
+- 2026-10-12: Final review: per-IP rate limit on `/api/voice`, `/api/text`, `/api/warm` (429); known
+  limitations section; planning-stage files removed (Twilio echo, laptop ASR check, unused fixture,
+  generated review sheets).
 - 2026-10-12: `PILOT_START` default 11 Oct 00:00 WAT; `scripts/excluded_hashes.txt` applied by export_log
   (`--exclude`, default on; `--since` defaults to the same start) and `/api/stats`; `content_turns` KPI.
 - 2026-10-11: Canary-aware code check (`format_ok_unconfirmed`, `unconfirmed_db_down`). Judging window:
