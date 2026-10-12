@@ -104,8 +104,9 @@ Did not know their postcode before (% of knew_before = false) · Said it helped 
 Interactions by language · Said it helped, by language · What people asked for (My postcode / Explain it
 / Check a code / Other) · Median response time, location vs voice; a status line "Official postcode
 database today: OK | no data | unreachable" from today's canary; the last 10 rows (time WAT, language,
-input, intent, postcode outcome, latency, feedback). Before `PILOT_START` (env, ISO time, set at deploy)
-it shows zeros and "—". No sample data anywhere.
+input, intent, postcode outcome, latency, feedback). `PILOT_START` (env, ISO time, set at deploy) defaults
+to `2026-10-11T00:00:00+01:00`; developer sessions in `scripts/excluded_hashes.txt` are left out; the
+interactions KPI also shows content turns (voice, text, location). No sample data anywhere.
 
 **Footer.** Text attribution only (no image).
 
@@ -475,6 +476,8 @@ The Twilio echo prototype is kept in `archive/twillo_echo.py`.
   budget HTML+CSS+JS < 50 KB, fonts < 120 KB. Fact sheets out of the review flow.
 - 2026-10-09: ASR revisions pinned; ASR cold/warm timings. New routes `/api/strings/<lang>` and
   `/api/location-denied`. Dev runs (`VP_ENV=dev`) log to `/logs/dev/`.
+- 2026-10-12: `PILOT_START` default 11 Oct 00:00 WAT; `scripts/excluded_hashes.txt` applied by export_log
+  (`--exclude`, default on; `--since` defaults to the same start) and `/api/stats`; `content_turns` KPI.
 - 2026-10-11: Canary-aware code check (`format_ok_unconfirmed`, `unconfirmed_db_down`). Judging window:
   LLM-only crons in `deploy/judging_window.py`, not deployed.
 - 2026-10-11: Footer image slot and `ui_footer_alt` removed (text attribution only). `/api/warm` returns

@@ -23,7 +23,9 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from app.stats import load_rows  # noqa: E402  (shared with /api/stats)
+from app.stats import DEFAULT_PILOT_START, load_excluded, load_rows  # noqa: E402  (shared with /api/stats)
+
+EXCLUDED = ROOT / "scripts" / "excluded_hashes.txt"
 
 OUT = ROOT / "docs" / "validation"
 CSV_COLUMNS = (
@@ -93,6 +95,11 @@ def summarise(
         f"Source: interaction log, {stats.get('files', 0)} files, {stats.get('lines', 0)} lines "
         f"({stats.get('duplicates', 0)} duplicates and {stats.get('broken', 0)} unreadable lines dropped"
         + (f"; {stats.get('before_since', 0)} rows before {since} excluded" if since else "")
+        + (
+            f"; {stats.get('excluded', 0)} developer test rows excluded (scripts/excluded_hashes.txt)"
+            if stats.get("excluded")
+            else ""
+        )
         + "). Developer test turns (/logs/dev/) are never included.",
         "",
         "| Measure | Value |",
@@ -151,9 +158,10 @@ def export(
     declines: dict[str, int],
     canary: dict[str, dict[str, Any]],
     out_dir: Path = OUT,
-    since: str | None = None,
+    since: str | None = DEFAULT_PILOT_START,
+    exclude: set[str] | None = None,
 ) -> tuple[Path, Path]:
-    rows, stats = load_rows(logs_dir, since)
+    rows, stats = load_rows(logs_dir, since, exclude)
     csv_path, md_path = out_dir / "interactions.csv", out_dir / "summary.md"
     write_csv(rows, csv_path)
     md_path.write_text(summarise(rows, declines, canary, stats, since), encoding="utf-8")
@@ -187,20 +195,27 @@ def main(argv: list[str]) -> None:
     parser.add_argument("--logs", type=Path, help="local folder with interactions-*.jsonl")
     parser.add_argument("--declines", type=Path, help='JSON {"YYYY-MM-DD": count}')
     parser.add_argument("--canary", type=Path, help='JSON {"YYYY-MM-DD": {"valid": n, ...}}')
-    parser.add_argument("--since", help="ISO timestamp; earlier rows are excluded (e.g. the pilot start)")
+    parser.add_argument(
+        "--since",
+        default=DEFAULT_PILOT_START,
+        help=f"ISO time; earlier rows are left out (default {DEFAULT_PILOT_START})",
+    )
+    parser.add_argument(
+        "--exclude", type=Path, default=EXCLUDED, help="user hashes of developer test sessions"
+    )
     parser.add_argument("--out", type=Path, default=OUT)
     args = parser.parse_args(argv)
 
     if args.pull:
         with tempfile.TemporaryDirectory() as tmp:
             declines, canary = pull(Path(tmp))
-            paths = export(Path(tmp), declines, canary, args.out, args.since)
+            paths = export(Path(tmp), declines, canary, args.out, args.since, load_excluded(args.exclude))
     else:
         if not args.logs:
             parser.error("--logs or --pull is required")
         declines = json.loads(args.declines.read_text()) if args.declines else {}
         canary = json.loads(args.canary.read_text()) if args.canary else {}
-        paths = export(args.logs, declines, canary, args.out, args.since)
+        paths = export(args.logs, declines, canary, args.out, args.since, load_excluded(args.exclude))
     for path in paths:
         print(path.relative_to(ROOT) if path.is_relative_to(ROOT) else path)
 

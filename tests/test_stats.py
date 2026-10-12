@@ -74,6 +74,7 @@ def test_dashboard_numbers_from_pilot_rows_only(tmp_path: Path) -> None:
 
     assert s["kpis"] == {
         "interactions": 9,  # the 08:00 row is before PILOT_START; dev/ is never read
+        "content_turns": 5,
         "valid_postcode_pct": 33,  # 1 valid of 3 location/validate turns
         "valid_postcode_n": 3,
         "did_not_know_pct": 50,
@@ -134,3 +135,25 @@ def test_canary_status_words() -> None:
     assert compute_stats([], {day: {"last": "valid"}}, None)["canary_today"] == "OK"
     assert compute_stats([], {day: {"last": "auth"}}, None)["canary_today"] == "unreachable"
     assert compute_stats([], {day: {"last": "error"}}, None)["canary_today"] == "unreachable"
+
+
+def test_excluded_developer_sessions_never_count(tmp_path: Path) -> None:
+    from app.stats import load_excluded
+
+    excluded = tmp_path / "excluded_hashes.txt"
+    excluded.write_text(f"# developer tests\n{B}  # smoke test\n\n")
+    assert load_excluded(excluded) == {B}
+    assert load_excluded(tmp_path / "missing.txt") == set()
+
+    rows, info = load_rows(logs(tmp_path), since=PILOT, exclude=load_excluded(excluded))
+    s = compute_stats(rows, {}, PILOT)
+    assert info["excluded"] == 3 and s["kpis"]["interactions"] == 6
+    assert {d["label"]: d["value"] for d in s["by_language"]}["Hausa"] == 0
+    assert B not in json.dumps(s)
+
+
+def test_default_pilot_start_is_sunday_midnight_wat() -> None:
+    from app.stats import DEFAULT_PILOT_START, parse_ts
+
+    assert DEFAULT_PILOT_START == "2026-10-11T00:00:00+01:00"
+    assert parse_ts(DEFAULT_PILOT_START).utcoffset().total_seconds() == 3600

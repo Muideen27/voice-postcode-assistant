@@ -11,7 +11,11 @@ from tests.test_export_log import write_logs
 def test_fill_from_export(tmp_path: Path, monkeypatch) -> None:
     out = tmp_path / "validation"
     export(
-        write_logs(tmp_path), {"2026-10-10": 2}, {"2026-10-10": {"not_found": 4, "last": "not_found"}}, out
+        write_logs(tmp_path),
+        {"2026-10-10": 2},
+        {"2026-10-10": {"not_found": 4, "last": "not_found"}},
+        out,
+        since=None,
     )
     submission = tmp_path / "submission"
     submission.mkdir()

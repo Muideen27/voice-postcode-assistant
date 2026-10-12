@@ -140,6 +140,7 @@ evals/                 live-model checks (need GPU/network), never collected by 
   results.md           (exists) eval scores, one entry per prompt change
 scripts/
   export_log.py        (exists) log Volume + Dicts -> docs/validation/interactions.csv + summary.md
+  excluded_hashes.txt  (exists) user hashes of developer test sessions; export + dashboard leave them out
   record_postcode_fixtures.py (exists) refresh tests/fixtures/postcode from the live API
   review_sheet.py      (exists) templates -> docs/review/<lang>.csv for native-speaker review
   apply_review.py      (exists) filled docs/review/<lang>.csv -> templates, clears _todo_review
@@ -283,7 +284,10 @@ scripts/warm.sh off                     # if disabled mid-window: set LLM (and A
   in the background with timeouts (tested). One CPU-only web container is always on (`min_containers=1`)
   because a cold CPU container takes 6-14 s on Modal; the GPUs stay at 0.
 - **Pilot dashboard** (second tab, English only, an approved exception to templates-only strings): real
-  log rows from `PILOT_START` only, never sample data, never transcripts or user hashes (`/api/stats`).
+  log rows from `PILOT_START` only (default `2026-10-11T00:00:00+01:00` when unset), never sample data,
+  never transcripts or user hashes (`/api/stats`); shows interactions and content turns.
+- **Developer test sessions** never count as evidence: add their user hash (from the Volume row) to
+  `scripts/excluded_hashes.txt`, then redeploy so the dashboard applies it; `export_log.py` reads it too.
 - Every external failure maps to a friendly, localised message plus a next step.
 
 ## LLM prompt conventions
@@ -361,3 +365,6 @@ account is locked. The Twilio echo prototype is kept in `archive/twillo_echo.py`
   `/api/warm` readiness + `warming_up_long`; `warm.sh 17:00`; judging window plan. Submission docs + PDFs.
 - 2026-10-11: Canary-aware code check (`format_ok_unconfirmed`, `api_status=unconfirmed_db_down`).
   Judging-window crons prepared in `deploy/judging_window.py` (LLM only, not deployed).
+- 2026-10-12: Checked: no turns lost after 15:25 Sun (logs + session counts). `scripts/excluded_hashes.txt`
+  (5 developer sessions) applied by export and dashboard; `PILOT_START` defaults to 11 Oct 00:00 WAT;
+  content turns on the dashboard. Prod logging verified end to end (Volume + dashboard in 6 s).

@@ -14,6 +14,23 @@ from typing import Any
 from app.store import WAT, today_wat
 
 LANG_NAMES = {"en": "English", "yo": "Yorùbá", "ha": "Hausa", "ig": "Igbo"}
+# Pilot evidence starts here unless PILOT_START (dashboard) or --since (export) says otherwise.
+DEFAULT_PILOT_START = "2026-10-11T00:00:00+01:00"
+CONTENT_INPUTS = ("voice", "text", "location")
+
+
+def load_excluded(path: Path) -> set[str]:
+    """Developer test sessions to leave out of the evidence: one user hash per line, '#' comments."""
+    if not path.exists():
+        return set()
+    hashes = set()
+    for line in path.read_text(encoding="utf-8").splitlines():
+        value = line.split("#", 1)[0].strip()
+        if value:
+            hashes.add(value)
+    return hashes
+
+
 LANG_ORDER = ("yo", "ha", "en", "ig")
 ASKED = {
     "get_my_postcode": "My postcode",
@@ -27,15 +44,18 @@ def parse_ts(value: str) -> datetime:
     return ts if ts.tzinfo else ts.replace(tzinfo=WAT)
 
 
-def load_rows(logs_dir: Path, since: str | None = None) -> tuple[list[dict[str, Any]], dict[str, int]]:
+def load_rows(
+    logs_dir: Path, since: str | None = None, exclude: set[str] | None = None
+) -> tuple[list[dict[str, Any]], dict[str, int]]:
     """All rows, merged, sorted by ts, deduped on (ts, user_hash). Returns (rows, stats).
 
     Top-level interactions-*.jsonl only: /logs/dev/ (developer test turns) is never read. `since` is an ISO
-    time in any offset; rows before it are dropped.
+    time in any offset; rows before it are dropped. Rows whose user_hash is in `exclude` (developer test
+    sessions, scripts/excluded_hashes.txt) are dropped and counted in stats["excluded"].
     """
     seen: set[tuple[str, str]] = set()
     rows: list[dict[str, Any]] = []
-    stats = Counter(files=0, lines=0, broken=0, duplicates=0, before_since=0)
+    stats = Counter(files=0, lines=0, broken=0, duplicates=0, before_since=0, excluded=0)
     for path in sorted(logs_dir.glob("interactions-*.jsonl")):
         stats["files"] += 1
         for line in path.read_text(encoding="utf-8").splitlines():
@@ -59,6 +79,10 @@ def load_rows(logs_dir: Path, since: str | None = None) -> tuple[list[dict[str, 
         start = parse_ts(since)
         kept = [r for r in rows if r["_t"] >= start]
         stats["before_since"] = len(rows) - len(kept)
+        rows = kept
+    if exclude:
+        kept = [r for r in rows if r["user_hash"] not in exclude]
+        stats["excluded"] = len(rows) - len(kept)
         rows = kept
     for row in rows:
         row.pop("_t")
@@ -137,6 +161,7 @@ def compute_stats(
         "pilot_start": pilot_start,
         "kpis": {
             "interactions": len(rows),
+            "content_turns": sum(1 for r in rows if r.get("input") in CONTENT_INPUTS),
             "valid_postcode_pct": _pct(
                 sum(1 for r in postcode_turns if r.get("postcode_found") is True), len(postcode_turns)
             ),

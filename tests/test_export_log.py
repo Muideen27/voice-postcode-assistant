@@ -103,7 +103,7 @@ def test_export_writes_csv_and_summary(tmp_path: Path) -> None:
         "2026-10-10": {"not_found": 20, "last": "not_found"},
         "2026-10-11": {"valid": 3, "not_found": 1, "last": "valid"},
     }
-    csv_path, md_path = export(write_logs(tmp_path), declines, canary, tmp_path / "out")
+    csv_path, md_path = export(write_logs(tmp_path), declines, canary, tmp_path / "out", since=None)
 
     with csv_path.open(encoding="utf-8-sig", newline="") as f:
         table = list(csv.DictReader(f))
@@ -131,3 +131,23 @@ def test_percentile_nearest_rank() -> None:
     assert percentile([], 50) is None
     assert percentile([5, 1, 3], 50) == 3
     assert percentile(list(range(1, 101)), 95) == 95
+
+
+def test_export_applies_default_start_and_exclusions(tmp_path: Path) -> None:
+    from app.stats import DEFAULT_PILOT_START
+
+    logs = tmp_path / "logs"
+    logs.mkdir()
+    rows = [
+        row("2026-10-10T23:59:00+01:00", A, input="voice"),  # before the default pilot start
+        row("2026-10-11T10:00:00+01:00", A, input="voice"),
+        row("2026-10-11T10:01:00+01:00", B, input="text"),  # developer test session
+        row("2026-10-11T10:02:00+01:00", C, input="choice"),
+    ]
+    (logs / "interactions-2026-10-11-ta-1.jsonl").write_text("\n".join(rows) + "\n")
+    _, md = export(logs, {}, {}, tmp_path / "out", DEFAULT_PILOT_START, {B})
+    text = md.read_text(encoding="utf-8")
+    assert "| Interactions (logged turns after consent) | 2 |" in text
+    assert "| Content turns (voice, text, location) | 1 |" in text
+    assert "| Unique users (salted hashes) | 2 |" in text
+    assert "1 developer test rows excluded" in text

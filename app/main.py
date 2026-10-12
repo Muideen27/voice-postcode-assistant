@@ -37,7 +37,7 @@ image = (
     # VP_ENV=dev (set when running `VP_ENV=dev modal serve app/main.py`) sends log rows to /logs/dev/, which
     # export_log.py ignores, so developer test turns never count as pilot evidence.
     # PILOT_START (ISO time, set at deploy: `PILOT_START=2026-10-10T09:00:00+01:00 modal deploy app/main.py`):
-    # the dashboard counts only log rows from then on. Unset -> the dashboard shows its empty state.
+    # the dashboard counts only log rows from then on. Unset -> app.stats.DEFAULT_PILOT_START (11 Oct 00:00 WAT).
     .env(
         {
             "NATLAS_URL": NATLAS_URL,
@@ -49,6 +49,7 @@ image = (
     .add_local_python_source("app", ignore=["**/__pycache__/**"])  # include the JSON templates
     .add_local_dir("data", str(ROOT / "data"))
     .add_local_dir("web", str(ROOT / "web"), ignore=["design/**"])
+    .add_local_file("scripts/excluded_hashes.txt", str(ROOT / "scripts" / "excluded_hashes.txt"))
 )
 
 sessions_dict = modal.Dict.from_name("voice-postcode-sessions", create_if_missing=True)
@@ -68,11 +69,12 @@ async def pilot_stats() -> dict[str, Any]:
     import asyncio
     import time
 
-    from app.stats import compute_stats, load_rows
+    from app.stats import DEFAULT_PILOT_START, compute_stats, load_excluded, load_rows
 
     if _stats_cache["value"] is not None and time.time() - _stats_cache["at"] < STATS_CACHE_S:
         return _stats_cache["value"]
-    start = os.environ.get("PILOT_START") or None
+    start = os.environ.get("PILOT_START") or DEFAULT_PILOT_START
+    exclude = load_excluded(ROOT / "scripts" / "excluded_hashes.txt")
     rows: list[dict[str, Any]] = []
     canary: dict[str, Any] = {}
     try:
@@ -80,10 +82,8 @@ async def pilot_stats() -> dict[str, Any]:
     except Exception as exc:
         print(json.dumps({"event": "stats_reload_error", "error": type(exc).__name__}))
     try:
-        if start:
-            rows, _ = await asyncio.to_thread(
-                load_rows, Path("/logs"), start
-            )  # top level only: dev/ excluded
+        # top level only (dev/ never read); developer test sessions excluded
+        rows, _ = await asyncio.to_thread(load_rows, Path("/logs"), start, exclude)
         canary = dict([item async for item in canary_dict.items.aio()])
     except Exception as exc:
         print(json.dumps({"event": "stats_error", "error": type(exc).__name__}))

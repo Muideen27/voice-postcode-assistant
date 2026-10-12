@@ -11,3 +11,4 @@ models/
 llama.cpp/
 .font-src/
 docs/submission/build/
+!scripts/excluded_hashes.txt

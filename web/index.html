@@ -383,8 +383,8 @@ function bars(id, rows, unit){
   const max = Math.max(1, ...rows.map(r => r.value || 0));
   document.getElementById(id).innerHTML = rows.map(r => `<div class="b"><span>${esc(r.label)}</span><div class="track"><div class="fill" style="width:${Math.round((r.value || 0) / max * 100)}%"></div></div><span class="n">${r.value == null ? "—" : esc(r.value) + unit}</span></div>`).join("");
 }
-function kpi(label, value, pct){
-  return `<div class="kpi"><p>${esc(label)}</p><strong>${esc(value)}</strong><div class="meter"><span style="width:${Math.max(0, Math.min(100, pct || 0))}%"></span></div></div>`;
+function kpi(label, value, pct, note){
+  return `<div class="kpi"><p>${esc(label)}</p><strong>${esc(value)}</strong><div class="meter"><span style="width:${Math.max(0, Math.min(100, pct || 0))}%"></span></div>${note ? `<p style="margin-top:8px">${esc(note)}</p>` : ""}</div>`;
 }
 async function loadStats(){
   let s;
@@ -394,7 +394,7 @@ async function loadStats(){
   document.getElementById("d-status").textContent = `Official postcode database today: ${s.canary_today}` +
     (s.pilot_start ? ` · counting from ${s.pilot_start}` : " · the pilot has not started yet");
   document.getElementById("d-kpis").innerHTML =
-    kpi("Real interactions (PS2 minimum 50)", k.interactions, k.interactions / 50 * 100) +
+    kpi("Real interactions (PS2 minimum 50)", k.interactions, k.interactions / 50 * 100, `${k.content_turns} content turns (voice, text, location)`) +
     kpi("Left with a valid postcode", pct(k.valid_postcode_pct), k.valid_postcode_pct) +
     kpi("Did not know their postcode before", pct(k.did_not_know_pct), k.did_not_know_pct) +
     kpi("Said it helped", pct(k.helped_pct), k.helped_pct);
